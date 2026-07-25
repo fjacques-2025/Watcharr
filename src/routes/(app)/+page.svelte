@@ -8,7 +8,7 @@
 	import UpNext from "@/lib/UpNext.svelte";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader from "@/lib/util/paginatedLoader.svelte";
-	import { clearActiveFilters, store } from "@/store.svelte";
+	import { clearActiveFilters, setWatchedListMode, store } from "@/store.svelte";
 	import type { Media } from "@/types";
 	import axios, { type GenericAbortSignal } from "axios";
 	import { onDestroy, untrack } from "svelte";
@@ -44,11 +44,6 @@
 			return;
 		}
 		dataLoader.runFn();
-	}
-
-	// Quick type toggle (All / TV / Movies) — drives the existing type filter.
-	function setTypeFilter(t: string[]) {
-		store.activeFilters = { ...store.activeFilters, type: t };
 	}
 
 	// True when the type filter is set to exactly this single media type.
@@ -97,21 +92,21 @@
 	<button
 		class="plain"
 		data-active={!store.activeFilters?.type?.length}
-		onclick={() => setTypeFilter([])}
+		onclick={() => setWatchedListMode("all")}
 	>
 		All
 	</button>
 	<button
 		class="plain"
 		data-active={isTypeOnly("tv")}
-		onclick={() => setTypeFilter(["tv"])}
+		onclick={() => setWatchedListMode("tv")}
 	>
 		<Icon i="tv" wh={18} /> TV Shows
 	</button>
 	<button
 		class="plain"
 		data-active={isTypeOnly("movie")}
-		onclick={() => setTypeFilter(["movie"])}
+		onclick={() => setWatchedListMode("movie")}
 	>
 		<Icon i="film" wh={18} /> Movies
 	</button>
