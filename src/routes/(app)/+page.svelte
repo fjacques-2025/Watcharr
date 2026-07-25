@@ -94,12 +94,26 @@
 > -->
 
 <div class="type-toggle">
-	<button class:active={!store.activeFilters?.type?.length} onclick={() => setTypeFilter([])}>
+	<button
+		class="plain"
+		data-active={!store.activeFilters?.type?.length}
+		onclick={() => setTypeFilter([])}
+	>
 		All
 	</button>
-	<button class:active={isTypeOnly("tv")} onclick={() => setTypeFilter(["tv"])}> TV </button>
-	<button class:active={isTypeOnly("movie")} onclick={() => setTypeFilter(["movie"])}>
-		Movies
+	<button
+		class="plain"
+		data-active={isTypeOnly("tv")}
+		onclick={() => setTypeFilter(["tv"])}
+	>
+		<Icon i="tv" wh={18} /> TV Shows
+	</button>
+	<button
+		class="plain"
+		data-active={isTypeOnly("movie")}
+		onclick={() => setTypeFilter(["movie"])}
+	>
+		<Icon i="film" wh={18} /> Movies
 	</button>
 </div>
 
@@ -164,30 +178,35 @@
 	.type-toggle {
 		display: flex;
 		flex-flow: row;
-		gap: 4px;
+		flex-wrap: wrap;
+		gap: 10px;
+		justify-content: center;
 		margin: 0 auto 15px auto;
-		width: fit-content;
 
 		button {
-			min-width: 90px;
-			padding: 6px 16px;
-			border-radius: 10px;
-			font-weight: bold;
-			text-transform: uppercase;
-			font-size: 13px;
-			opacity: 0.7;
+			display: flex;
+			flex-flow: row;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 14px;
+			border-radius: 8px;
+			font-size: 14px;
+			color: $text-color;
+			fill: $text-color;
 			transition:
-				opacity 150ms ease,
-				background-color 150ms ease;
+				background-color 150ms ease,
+				color 150ms ease,
+				outline 150ms ease;
 
-			&:hover {
-				opacity: 1;
+			&:hover,
+			&[data-active="true"] {
+				color: $bg-color;
+				fill: $bg-color;
+				background-color: $accent-color-hover;
 			}
 
-			&.active {
-				opacity: 1;
-				background-color: $accent-color;
-				color: $bg-color;
+			&[data-active="true"] {
+				outline: 3px solid $accent-color;
 			}
 		}
 	}
