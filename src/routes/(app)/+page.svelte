@@ -46,6 +46,16 @@
 		dataLoader.runFn();
 	}
 
+	// Quick type toggle (All / TV / Movies) — drives the existing type filter.
+	function setTypeFilter(t: string[]) {
+		store.activeFilters = { ...store.activeFilters, type: t };
+	}
+
+	// True when the type filter is set to exactly this single media type.
+	function isTypeOnly(t: string): boolean {
+		return store.activeFilters?.type?.length === 1 && store.activeFilters.type[0] === t;
+	}
+
 	// NOTE: This effect also handles initial load of data.
 	$effect(() => {
 		// When our sort/filter query params change,
@@ -83,7 +93,19 @@
 	{JSON.stringify(store.sortAndFiltersForQueryParams)}</span
 > -->
 
-<UpNext />
+<div class="type-toggle">
+	<button class:active={!store.activeFilters?.type?.length} onclick={() => setTypeFilter([])}>
+		All
+	</button>
+	<button class:active={isTypeOnly("tv")} onclick={() => setTypeFilter(["tv"])}> TV </button>
+	<button class:active={isTypeOnly("movie")} onclick={() => setTypeFilter(["movie"])}>
+		Movies
+	</button>
+</div>
+
+{#if !isTypeOnly("movie")}
+	<UpNext />
+{/if}
 
 <PosterList>
 	{#if dataLoader.state.data?.length > 0}
@@ -139,6 +161,37 @@
 {/if} -->
 
 <style lang="scss">
+	.type-toggle {
+		display: flex;
+		flex-flow: row;
+		gap: 4px;
+		margin: 0 auto 15px auto;
+		width: fit-content;
+
+		button {
+			min-width: 90px;
+			padding: 6px 16px;
+			border-radius: 10px;
+			font-weight: bold;
+			text-transform: uppercase;
+			font-size: 13px;
+			opacity: 0.7;
+			transition:
+				opacity 150ms ease,
+				background-color 150ms ease;
+
+			&:hover {
+				opacity: 1;
+			}
+
+			&.active {
+				opacity: 1;
+				background-color: $accent-color;
+				color: $bg-color;
+			}
+		}
+	}
+
 	.empty-list {
 		display: flex;
 		flex-flow: column;
