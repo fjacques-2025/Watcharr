@@ -39,3 +39,38 @@ export function adjacentItem(
 export function itemHref(it: ListNavItem): string {
 	return `/${it.type}/${it.id}`;
 }
+
+// Fresh content (Media) seen on detail pages, keyed by "type:id". Used to patch
+// just that item in the restored (cached) list — e.g. after a title's metadata
+// was translated on its detail page — with no extra request.
+const contentUpdates = new Map<string, any>();
+
+export function markContentRefreshed(type: "tv" | "movie", media: any) {
+	const id = media?.ids?.tmdb;
+	if (id != null) contentUpdates.set(`${type}:${id}`, media);
+}
+
+/** Return the list with any refreshed items patched in place (new array). */
+export function applyContentUpdates(medias: any[]): any[] {
+	if (contentUpdates.size === 0) return medias;
+	return (medias ?? []).map((m) => {
+		if (!m?.ids) return m;
+		const rt =
+			m.type === MediaTypeE.tmdbShow
+				? "tv"
+				: m.type === MediaTypeE.tmdbMovie
+					? "movie"
+					: null;
+		if (!rt) return m;
+		const fresh = contentUpdates.get(`${rt}:${m.ids.tmdb}`);
+		if (!fresh) return m;
+		// Patch only language-dependent display fields; keep list-specific state
+		// (watched status, rating, etc.).
+		const patch = { ...m };
+		if (fresh.name != null) patch.name = fresh.name;
+		if (fresh.overview != null) patch.overview = fresh.overview;
+		if (fresh.extPosterPath != null) patch.extPosterPath = fresh.extPosterPath;
+		if ("poster" in fresh) patch.poster = fresh.poster;
+		return patch;
+	});
+}

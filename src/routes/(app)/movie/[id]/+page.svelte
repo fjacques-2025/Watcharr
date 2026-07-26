@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BackButton from "@/lib/generic/BackButton.svelte";
 	import ItemNav from "@/lib/generic/ItemNav.svelte";
+	import { markContentRefreshed } from "@/lib/util/listNav.svelte";
 	import PersonPoster from "@/lib/poster/PersonPoster.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
@@ -44,6 +45,12 @@
 	let jellyfinUrl: string | undefined = $state();
 	let arrRequestButtonComp: ArrRequestButton | undefined = $state();
 	let movie: Media | undefined = $state();
+
+	// Keep the list card for this title in sync with the (possibly
+	// translated) content shown here.
+	$effect(() => {
+		if (movie) markContentRefreshed("movie", movie);
+	});
 	let pageError: Error | undefined = $state();
 
 	$effect(() => {

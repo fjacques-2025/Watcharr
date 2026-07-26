@@ -32,6 +32,7 @@
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
 	import BackButton from "@/lib/generic/BackButton.svelte";
 	import ItemNav from "@/lib/generic/ItemNav.svelte";
+	import { markContentRefreshed } from "@/lib/util/listNav.svelte";
 	import MyReview from "@/lib/content/MyReview.svelte";
 	import ViewTrailerButton from "@/lib/content/ViewTrailerButton.svelte";
 	import PosterImage from "@/lib/content/PosterImage.svelte";
@@ -48,6 +49,12 @@
 	let jellyfinUrl: string | undefined = $state();
 	let arrRequestButtonComp: ArrRequestButton | undefined = $state();
 	let show: Media | undefined = $state();
+
+	// Keep the list card for this title in sync with the (possibly
+	// translated) content shown here.
+	$effect(() => {
+		if (show) markContentRefreshed("tv", show);
+	});
 	let pageError: Error | undefined = $state();
 	let countAsPlayModalSignal: Signal<boolean> | undefined = $state();
 
