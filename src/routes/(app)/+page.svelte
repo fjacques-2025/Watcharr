@@ -1,3 +1,16 @@
+<script module lang="ts">
+	// Cached watched-list state, kept across navigations so returning to the
+	// list (e.g. via the browser back button after opening a title) restores
+	// the loaded items and scroll position instead of reloading from the top.
+	let listCache: {
+		data: any[];
+		page: number;
+		pageMax: number;
+		scrollY: number;
+		key: string;
+	} | null = null;
+</script>
+
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import Error from "@/lib/Error.svelte";
@@ -11,10 +24,29 @@
 	import { clearActiveFilters, setWatchedListMode, store } from "@/store.svelte";
 	import type { Media } from "@/types";
 	import axios, { type GenericAbortSignal } from "axios";
-	import { onDestroy, untrack } from "svelte";
+	import { onDestroy, tick, untrack } from "svelte";
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
+
+	// SvelteKit snapshot: cache the list on navigate-away, and flag a restore
+	// when the page is recreated via back/forward.
+	let restorePending = false;
+	export const snapshot = {
+		capture: () => {
+			listCache = {
+				data: dataLoader.state.data,
+				page: dataLoader.state.page,
+				pageMax: dataLoader.state.pageMax,
+				scrollY: window.scrollY,
+				key: JSON.stringify(store.sortAndFiltersForQueryParams),
+			};
+			return true;
+		},
+		restore: () => {
+			restorePending = true;
+		},
+	};
 
 	let nextLoadParams: {
 		page: number;
@@ -53,18 +85,31 @@
 
 	// NOTE: This effect also handles initial load of data.
 	$effect(() => {
-		// When our sort/filter query params change,
-		// load our list again.
-		// Since it exists at load, this performs our
-		// initial load of data too.
-		if (store.sortAndFiltersForQueryParams) {
-			untrack(() => {
-				// We don't want to trigger another re-run of this
-				// effect when state inside these funcs changes.
-				dataLoader.reset();
-				dataLoader.runFn();
-			});
-		}
+		// Track sort/filter changes (also performs the initial load).
+		const qp = store.sortAndFiltersForQueryParams;
+		untrack(() => {
+			// On back/forward navigation, restore the cached list + scroll
+			// instead of reloading — but only if the sort/filter still matches.
+			if (
+				restorePending &&
+				listCache &&
+				listCache.key === JSON.stringify(qp) &&
+				listCache.data.length > 0
+			) {
+				restorePending = false;
+				dataLoader.state.data = listCache.data;
+				dataLoader.state.page = listCache.page;
+				dataLoader.state.pageMax = listCache.pageMax;
+				const y = listCache.scrollY;
+				tick().then(() => window.scrollTo(0, y));
+				return;
+			}
+			restorePending = false;
+			// We don't want to trigger another re-run of this
+			// effect when state inside these funcs changes.
+			dataLoader.reset();
+			dataLoader.runFn();
+		});
 	});
 
 	onDestroy(() => {

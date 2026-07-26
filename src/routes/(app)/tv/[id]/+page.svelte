@@ -30,6 +30,7 @@
 	import tooltip from "@/lib/actions/tooltip.js";
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
+	import BackButton from "@/lib/generic/BackButton.svelte";
 	import MyReview from "@/lib/content/MyReview.svelte";
 	import ViewTrailerButton from "@/lib/content/ViewTrailerButton.svelte";
 	import PosterImage from "@/lib/content/PosterImage.svelte";
@@ -154,6 +155,7 @@
 	{/if}
 	<div>
 		<div class="content">
+			<BackButton />
 			<div class="details-wrap">
 				<div class="details-container">
 					<PosterImage

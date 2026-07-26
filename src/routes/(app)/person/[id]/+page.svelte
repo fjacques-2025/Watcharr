@@ -1,4 +1,5 @@
 <script lang="ts">
+	import BackButton from "@/lib/generic/BackButton.svelte";
 	import Error from "@/lib/Error.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
 	import PosterList from "@/lib/poster/PosterList.svelte";
@@ -133,6 +134,7 @@
 				/>
 			{/if}
 			<div class="content">
+				<BackButton />
 				<div class="details-wrap">
 					<div class="details-container">
 						<PosterImage

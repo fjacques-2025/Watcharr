@@ -1,4 +1,5 @@
 <script lang="ts">
+	import BackButton from "@/lib/generic/BackButton.svelte";
 	import PersonPoster from "@/lib/poster/PersonPoster.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
@@ -134,6 +135,7 @@
 	{/if}
 	<div>
 		<div class="content">
+			<BackButton />
 			<div class="details-wrap">
 				<div class="details-container">
 					<PosterImage
