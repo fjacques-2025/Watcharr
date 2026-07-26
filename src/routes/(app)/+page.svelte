@@ -77,6 +77,28 @@
 		dataLoader.runFn();
 	}
 
+	// After restoring the cached list, silently re-fetch the same range (one
+	// request, limit = items shown) and swap in fresh content — so updates made
+	// while away (e.g. a title translated on its detail page) show up without
+	// changing the item count, keeping the scroll position stable.
+	async function refreshLoadedInPlace(key: string) {
+		try {
+			const count = dataLoader.state.data.length;
+			if (count <= 0) return;
+			const r = await axios.get(`/watched`, {
+				params: { page: 1, limit: count, ...store.sortAndFiltersForQueryParams },
+			});
+			// Bail if the sort/filter changed while we were fetching.
+			if (JSON.stringify(store.sortAndFiltersForQueryParams) !== key) return;
+			const fresh = r?.data?.results;
+			if (fresh && fresh.length > 0) {
+				dataLoader.state.data = fresh;
+			}
+		} catch (err) {
+			console.warn("refreshLoadedInPlace: failed", err);
+		}
+	}
+
 	// Scroll back to a saved position once the (async-rendered) list is tall
 	// enough to reach it — otherwise scrolling happens before the posters lay
 	// out and gets clamped near the top. Also wins over SvelteKit's own early
@@ -122,6 +144,7 @@
 				dataLoader.state.page = listCache.page;
 				dataLoader.state.pageMax = listCache.pageMax;
 				restoreScrollTo(listCache.scrollY);
+				refreshLoadedInPlace(listCache.key);
 				return;
 			}
 			initialLoad = false;
