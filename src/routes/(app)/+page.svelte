@@ -24,7 +24,7 @@
 	import { clearActiveFilters, setWatchedListMode, store } from "@/store.svelte";
 	import type { Media } from "@/types";
 	import axios, { type GenericAbortSignal } from "axios";
-	import { onDestroy, tick, untrack } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
@@ -78,6 +78,26 @@
 		dataLoader.runFn();
 	}
 
+	// Scroll back to a saved position once the (async-rendered) list is tall
+	// enough to reach it — otherwise scrolling happens before the posters lay
+	// out and gets clamped near the top. Also wins over SvelteKit's own early
+	// scroll restoration by re-applying on the next frame.
+	function restoreScrollTo(y: number) {
+		let tries = 0;
+		const step = () => {
+			const maxScroll =
+				document.documentElement.scrollHeight - window.innerHeight;
+			if (maxScroll >= y || tries >= 60) {
+				window.scrollTo(0, y);
+				requestAnimationFrame(() => window.scrollTo(0, y));
+				return;
+			}
+			tries++;
+			requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	}
+
 	// True when the type filter is set to exactly this single media type.
 	function isTypeOnly(t: string): boolean {
 		return store.activeFilters?.type?.length === 1 && store.activeFilters.type[0] === t;
@@ -100,8 +120,7 @@
 				dataLoader.state.data = listCache.data;
 				dataLoader.state.page = listCache.page;
 				dataLoader.state.pageMax = listCache.pageMax;
-				const y = listCache.scrollY;
-				tick().then(() => window.scrollTo(0, y));
+				restoreScrollTo(listCache.scrollY);
 				return;
 			}
 			restorePending = false;
