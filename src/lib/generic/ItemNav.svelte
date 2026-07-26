@@ -17,7 +17,9 @@
 
 	function go(dir: "prev" | "next") {
 		const it = dir === "prev" ? adj.prev : adj.next;
-		if (it) goto(itemHref(it));
+		// Replace history instead of pushing, so browsing prev/next doesn't
+		// stack entries — the Back button then returns straight to the list.
+		if (it) goto(itemHref(it), { replaceState: true });
 	}
 
 	// Don't hijack swipes that start inside a horizontally-scrollable area
