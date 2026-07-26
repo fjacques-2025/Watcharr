@@ -31,6 +31,7 @@
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
 	import BackButton from "@/lib/generic/BackButton.svelte";
+	import ItemNav from "@/lib/generic/ItemNav.svelte";
 	import MyReview from "@/lib/content/MyReview.svelte";
 	import ViewTrailerButton from "@/lib/content/ViewTrailerButton.svelte";
 	import PosterImage from "@/lib/content/PosterImage.svelte";
@@ -156,6 +157,7 @@
 	<div>
 		<div class="content">
 			<BackButton />
+			<ItemNav type="tv" />
 			<div class="details-wrap">
 				<div class="details-container">
 					<PosterImage

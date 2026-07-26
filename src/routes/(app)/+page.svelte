@@ -22,6 +22,7 @@
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader from "@/lib/util/paginatedLoader.svelte";
 	import { clearActiveFilters, setWatchedListMode, store } from "@/store.svelte";
+	import { setListOrder } from "@/lib/util/listNav.svelte";
 	import type { Media } from "@/types";
 	import axios, { type GenericAbortSignal } from "axios";
 	import { onDestroy, untrack } from "svelte";
@@ -129,6 +130,12 @@
 			dataLoader.reset();
 			dataLoader.runFn();
 		});
+	});
+
+	// Publish the current list order so detail pages can offer prev/next
+	// navigation (arrows + swipe) matching what's shown here.
+	$effect(() => {
+		setListOrder(dataLoader.state.data);
 	});
 
 	onDestroy(() => {

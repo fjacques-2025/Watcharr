@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BackButton from "@/lib/generic/BackButton.svelte";
+	import ItemNav from "@/lib/generic/ItemNav.svelte";
 	import PersonPoster from "@/lib/poster/PersonPoster.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
@@ -136,6 +137,7 @@
 	<div>
 		<div class="content">
 			<BackButton />
+			<ItemNav type="movie" />
 			<div class="details-wrap">
 				<div class="details-container">
 					<PosterImage
