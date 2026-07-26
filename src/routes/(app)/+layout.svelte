@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { afterNavigate, goto } from "$app/navigation";
+	import { markInAppNavigation } from "@/lib/util/navHistory";
 	import { page } from "$app/state";
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
@@ -207,7 +208,10 @@
 		}
 	}
 
-	afterNavigate(() => {
+	afterNavigate((nav) => {
+		// Record real in-app navigations so the Back button on detail pages
+		// knows there's somewhere to go back to.
+		if (nav?.from && nav.type !== "enter") markInAppNavigation();
 		decideOnNavSplit();
 		closeAllSubMenus();
 	});

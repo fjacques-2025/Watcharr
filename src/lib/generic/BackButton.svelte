@@ -1,17 +1,12 @@
 <script lang="ts">
-	import { afterNavigate, goto } from "$app/navigation";
+	import { goto } from "$app/navigation";
 	import Icon from "@/lib/Icon.svelte";
-
-	// Whether we reached this page via in-app navigation, so history.back()
-	// stays inside the app. Stays false on a fresh load / deep link (e.g. a
-	// bookmarked detail page, or the PWA opened directly here) → go home.
-	let cameFromApp = $state(false);
-	afterNavigate((nav) => {
-		if (nav.from) cameFromApp = true;
-	});
+	import { canGoBackInApp } from "@/lib/util/navHistory";
 
 	function back() {
-		if (cameFromApp) {
+		// Go back within the app when there's in-app history; otherwise (fresh
+		// load / deep link / PWA opened directly here) fall back to home.
+		if (canGoBackInApp()) {
 			history.back();
 		} else {
 			goto("/");
