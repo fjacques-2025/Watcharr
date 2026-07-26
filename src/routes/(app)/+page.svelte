@@ -12,7 +12,7 @@
 </script>
 
 <script lang="ts">
-	import { goto } from "$app/navigation";
+	import { beforeNavigate, goto } from "$app/navigation";
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
@@ -29,11 +29,13 @@
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
 
-	// SvelteKit snapshot: cache the list on navigate-away, and flag a restore
-	// when the page is recreated via back/forward.
-	let restorePending = false;
-	export const snapshot = {
-		capture: () => {
+	// Cache the list (items + scroll) whenever we navigate away, so returning
+	// restores the view instead of reloading from the top. Captured here (while
+	// still mounted) rather than via a snapshot export, so it's ready and
+	// deterministic by the time the page remounts on the way back.
+	let initialLoad = true;
+	beforeNavigate(() => {
+		if (dataLoader.state.data.length > 0) {
 			listCache = {
 				data: dataLoader.state.data,
 				page: dataLoader.state.page,
@@ -41,12 +43,8 @@
 				scrollY: window.scrollY,
 				key: JSON.stringify(store.sortAndFiltersForQueryParams),
 			};
-			return true;
-		},
-		restore: () => {
-			restorePending = true;
-		},
-	};
+		}
+	});
 
 	let nextLoadParams: {
 		page: number;
@@ -108,22 +106,24 @@
 		// Track sort/filter changes (also performs the initial load).
 		const qp = store.sortAndFiltersForQueryParams;
 		untrack(() => {
-			// On back/forward navigation, restore the cached list + scroll
-			// instead of reloading — but only if the sort/filter still matches.
+			// On the first mount, if we have a cached list for this exact
+			// sort/filter (i.e. we're returning to the page), restore it and its
+			// scroll position instead of reloading from the top. Sort/filter
+			// changes (later effect runs) always reload.
 			if (
-				restorePending &&
+				initialLoad &&
 				listCache &&
 				listCache.key === JSON.stringify(qp) &&
 				listCache.data.length > 0
 			) {
-				restorePending = false;
+				initialLoad = false;
 				dataLoader.state.data = listCache.data;
 				dataLoader.state.page = listCache.page;
 				dataLoader.state.pageMax = listCache.pageMax;
 				restoreScrollTo(listCache.scrollY);
 				return;
 			}
-			restorePending = false;
+			initialLoad = false;
 			// We don't want to trigger another re-run of this
 			// effect when state inside these funcs changes.
 			dataLoader.reset();
