@@ -19,6 +19,7 @@
 	import PosterRating from "./PosterRating.svelte";
 	import ExtraDetails from "./ExtraDetails.svelte";
 	import { buildExtraDetails } from "./lib";
+	import { toExternalRating } from "../rating/helpers";
 	import { decode } from "blurhash";
 	import WatchedDeleteModal from "../watched/WatchedDeleteModal.svelte";
 	import { resolve } from "$app/paths";
@@ -43,6 +44,14 @@
 		 * Notably 'On my list' feature (eg on person page).
 		 */
 		hideIfNotOnList?: boolean;
+		/**
+		 * Show the source's rating (TMDB/IGDB vote average) read-only, instead of
+		 * the interactive personal rating. For browsing contexts like Discover,
+		 * where you mostly haven't seen the content, so rating it says nothing and
+		 * the source's score is what helps you choose.
+		 * "On my list" is still conveyed by the status button, so nothing is lost.
+		 */
+		showExternalRating?: boolean;
 		// When provided, default click handlers will instead run this callback.
 		onClick?: (() => void) | undefined;
 		/**
@@ -63,6 +72,7 @@
 		hideButtons = false,
 		fluidSize = false,
 		hideIfNotOnList = false,
+		showExternalRating = false,
 		onClick = undefined,
 		onUpdated = undefined,
 	}: Props = $props();
@@ -389,11 +399,22 @@
 
 			{#if !hideButtons}
 				<div class="buttons">
-					<PosterRating
-						rating={watched?.rating}
-						{handleStarClick}
-						{disableInteraction}
-					/>
+					{#if showExternalRating}
+						<PosterRating
+							staticText={media.rating
+								? String(toExternalRating(media.rating))
+								: "–"}
+							btnTooltip={media.rating
+								? `${toExternalRating(media.rating)} out of 10 (${media.ratingCount ?? 0} votes)`
+								: "Not rated yet"}
+						/>
+					{:else}
+						<PosterRating
+							rating={watched?.rating}
+							{handleStarClick}
+							{disableInteraction}
+						/>
+					{/if}
 					<PosterStatus
 						status={watched?.status}
 						{handleStatusClick}

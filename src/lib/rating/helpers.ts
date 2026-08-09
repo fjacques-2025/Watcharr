@@ -41,6 +41,20 @@ export function toShowableRating(r?: number) {
 	return Math.round(r);
 }
 
+/**
+ * Scales an *external* rating (TMDB/IGDB vote average, as carried on `Media.rating`)
+ * into a 0-10 number with one decimal, for display.
+ * Unlike `toShowableRating` this ignores the user's rating system: it isn't their
+ * score, so it always reads out of 10, the way the source publishes it.
+ * Values above 10 are assumed to be out of 100 (which is how we store them).
+ */
+export function toExternalRating(r?: number) {
+	if (!r) {
+		return 0;
+	}
+	return Math.round(r > 10 ? r : r * 10) / 10;
+}
+
 export function toWhichThumb(r?: number) {
 	if (!r) {
 		return;
