@@ -6,6 +6,7 @@
 	import Poster from "@/lib/poster/Poster.svelte";
 	import PosterList from "@/lib/poster/PosterList.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
+	import UpNext from "@/lib/UpNext.svelte";
 	import { req } from "@/lib/util/api";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader from "@/lib/util/paginatedLoader.svelte";
@@ -119,6 +120,10 @@
 		<Icon i="film" wh={18} /> Movies
 	</button>
 </div>
+
+{#if !isTypeOnly("movie")}
+	<UpNext />
+{/if}
 
 <PosterList>
 	{#if dataLoader.state.data?.length > 0}

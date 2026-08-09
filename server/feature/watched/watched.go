@@ -10,12 +10,14 @@ import (
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/feature/watched/addedtocontent"
+	"github.com/sbondCo/Watcharr/media/tmdb"
 	"github.com/sbondCo/Watcharr/util"
 	"gorm.io/gorm"
 )
 
 type ContentProvider interface {
 	GetOrCacheContent(contentType entity.ContentType, tmdbId int) (entity.Content, error)
+	SeasonDetails(showId string, seasonNumber string) (tmdb.SeasonDetails, error)
 }
 
 type GameProvider interface {

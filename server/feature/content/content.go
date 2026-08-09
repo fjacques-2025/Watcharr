@@ -99,6 +99,12 @@ func NewService(db *gorm.DB, tmdb *tmdb.TMDB) *Service {
 	}
 }
 
+// SeasonDetails exposes TMDB season details (used by the watched service's
+// "Up Next" feature to find the next unwatched episode).
+func (s *Service) SeasonDetails(showId string, seasonNumber string) (tmdb.SeasonDetails, error) {
+	return s.tmdb.SeasonDetails(showId, seasonNumber)
+}
+
 // onlyUpdate - If we should only update existing row if exists, or false to create/update if not exist.
 func (s *Service) saveContent(c *entity.Content, onlyUpdate bool) error {
 	slog.Info("Saving content to db", "id", c.TmdbID, "title", c.Title)
