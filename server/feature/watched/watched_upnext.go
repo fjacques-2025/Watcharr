@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
@@ -50,10 +51,32 @@ func (s *Service) UpNext(userId uint, wpr domain.WatchedGetPageRequest) ([]UpNex
 		return nil, res.Error
 	}
 
-	items := []UpNextItem{}
+	// Compute each show's next episode in parallel (bounded concurrency),
+	// preserving the query's sort order. The cold-cache TMDB season fetches in
+	// nextEpisodeFor are the bottleneck, so this cuts first-load time a lot.
+	type upNextResult struct {
+		item UpNextItem
+		ok   bool
+	}
+	results := make([]upNextResult, len(watched))
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
 	for i := range watched {
-		if item, ok := s.nextEpisodeFor(&watched[i]); ok {
-			items = append(items, item)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			item, ok := s.nextEpisodeFor(&watched[i])
+			results[i] = upNextResult{item: item, ok: ok}
+		}(i)
+	}
+	wg.Wait()
+
+	items := []UpNextItem{}
+	for _, r := range results {
+		if r.ok {
+			items = append(items, r.item)
 		}
 	}
 	return items, nil
