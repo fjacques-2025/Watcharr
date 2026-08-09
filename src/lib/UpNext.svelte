@@ -3,6 +3,7 @@
 	import { notify } from "@/lib/util/notify";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
 	import Icon from "@/lib/Icon.svelte";
+	import Spinner from "@/lib/Spinner.svelte";
 	import { req } from "@/lib/util/api";
 	import { store } from "@/store.svelte";
 
@@ -92,7 +93,12 @@
 	});
 </script>
 
-{#if !loading && items.length > 0}
+{#if loading}
+	<div class="up-next-loading">
+		<h3 class="norm">Up Next</h3>
+		<Spinner />
+	</div>
+{:else if items.length > 0}
 	<HorizontalList title="Up Next">
 		{#each items as item (item.watchedId)}
 			<li class="up-next-card">
@@ -144,6 +150,18 @@
 {/if}
 
 <style lang="scss">
+	.up-next-loading {
+		display: flex;
+		flex-flow: row;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 20px;
+
+		h3 {
+			font-weight: 700;
+		}
+	}
+
 	.up-next-card {
 		display: flex;
 		flex-flow: column;
