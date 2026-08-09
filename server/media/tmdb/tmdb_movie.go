@@ -38,6 +38,26 @@ func (t *TMDB) MovieDetails(o MovieDetailsOptions) (MovieDetails, error) {
 		slog.Error("MovieDetails: Request failed!", "error", err)
 		return MovieDetails{}, errors.New("request failed")
 	}
+	// English fallback: when a non-English metadata language is configured and
+	// the translation is missing key fields, backfill them from en-US so the UI
+	// doesn't show blanks for untranslated content.
+	if t.GetLang() != "en-US" &&
+		(resp.Overview == "" || resp.Title == "" || resp.PosterPath == "") {
+		en := new(MovieDetails)
+		if ferr := t.req("/movie/"+o.ID, map[string]string{"language": "en-US"}, &en); ferr == nil {
+			if resp.Overview == "" {
+				resp.Overview = en.Overview
+			}
+			if resp.Title == "" {
+				resp.Title = en.Title
+			}
+			if resp.PosterPath == "" {
+				resp.PosterPath = en.PosterPath
+			}
+		} else {
+			slog.Warn("MovieDetails: en-US fallback failed", "id", o.ID, "error", ferr)
+		}
+	}
 	resp.WatchProvidersTransformed = transformProviders(
 		&resp.WatchProviders,
 		o.Country)
