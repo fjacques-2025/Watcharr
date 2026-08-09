@@ -13,6 +13,7 @@
 	import Checkbox from "@/lib/Checkbox.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
+	import BackButton from "@/lib/generic/BackButton.svelte";
 	import PosterImage from "@/lib/content/PosterImage.svelte";
 	import ExpandableText from "@/lib/content/ExpandableText.svelte";
 
@@ -130,6 +131,7 @@
 				/>
 			{/if}
 			<div class="content">
+				<BackButton />
 				<div class="details-wrap">
 					<div class="details-container">
 						{#if person.extPosterPath}
