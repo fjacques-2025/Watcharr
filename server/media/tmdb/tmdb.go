@@ -22,13 +22,23 @@ type ContentProvider interface {
 
 type TMDB struct {
 	Key             string
+	Lang            string
 	contentProvider ContentProvider
 }
 
-func NewTMDB(key string) *TMDB {
+func NewTMDB(key string, lang string) *TMDB {
 	return &TMDB{
-		Key: key,
+		Key:  key,
+		Lang: lang,
 	}
+}
+
+// GetLang returns the configured metadata language, defaulting to en-US.
+func (t *TMDB) GetLang() string {
+	if t.Lang != "" {
+		return t.Lang
+	}
+	return "en-US"
 }
 
 func (t *TMDB) AddContentProvider(contentProvider ContentProvider) {
@@ -55,7 +65,11 @@ func (t *TMDB) apiRequest(ep string, p map[string]string) ([]byte, error) {
 	// Query params
 	params := url.Values{}
 	params.Add("api_key", t.GetKey())
-	params.Add("language", "en-US")
+	// Use the configured language unless the caller overrides it per-request
+	// (e.g. the English fallback fetch passes its own "language").
+	if _, ok := p["language"]; !ok {
+		params.Add("language", t.GetLang())
+	}
 	for k, v := range p {
 		params.Add(k, v)
 	}
