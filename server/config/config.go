@@ -66,6 +66,10 @@ type ServerConfig struct {
 	// If unprovided, the default Watcharr API key will be used.
 	TMDB_KEY string `json:",omitempty"`
 
+	// Optional: Metadata language for content fetched from TMDB (e.g. "fr-FR").
+	// Defaults to "en-US". Missing translations fall back to English.
+	TMDB_LANG string `json:",omitempty"`
+
 	// Optional: Point to Plex install to enable plex features.
 	PLEX_HOST string `json:",omitempty"`
 
@@ -106,6 +110,7 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 		JELLYFIN_HOST:   c.JELLYFIN_HOST,
 		USE_EMBY:        c.USE_EMBY,
 		TMDB_KEY:        c.TMDB_KEY,
+		TMDB_LANG:       c.TMDB_LANG,
 		PLEX_HOST:       c.PLEX_HOST,
 		PLEX_MACHINE_ID: c.PLEX_MACHINE_ID,
 		DEBUG:           c.DEBUG,
@@ -135,6 +140,8 @@ func (c *ServerConfig) Get(s string) (ServerConfigGetByName, error) {
 		return ServerConfigGetByName{Value: c.SIGNUP_ENABLED}, nil
 	case "TMDB_KEY":
 		return ServerConfigGetByName{Value: c.TMDB_KEY}, nil
+	case "TMDB_LANG":
+		return ServerConfigGetByName{Value: c.TMDB_LANG}, nil
 	case "PLEX_HOST":
 		return ServerConfigGetByName{Value: c.PLEX_HOST}, nil
 	case "PLEX_MACHINE_ID":
@@ -161,6 +168,8 @@ func (c *ServerConfig) UpdateConfig(k string, v any) error {
 		c.SIGNUP_ENABLED = v.(bool)
 	} else if k == "TMDB_KEY" {
 		c.TMDB_KEY = v.(string)
+	} else if k == "TMDB_LANG" {
+		c.TMDB_LANG = v.(string)
 	} else if k == "DEBUG" {
 		c.DEBUG = v.(bool)
 		logging.SetLevel(c.DEBUG)
@@ -263,6 +272,7 @@ func generateConfig() (*ServerConfig, error) {
 		JWT_SECRET: key,
 		// Other defaults..
 		DEFAULT_COUNTRY: "US",
+		TMDB_LANG:       "en-US",
 		SIGNUP_ENABLED:  true,
 	}
 	barej, err := json.MarshalIndent(cfg, "", "\t")

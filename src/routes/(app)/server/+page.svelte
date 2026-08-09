@@ -19,6 +19,7 @@
 	import Stat from "@/lib/stats/Stat.svelte";
 	import TwitchModal from "./modals/TwitchModal.svelte";
 	import RegionDropDown from "@/lib/RegionDropDown.svelte";
+	import LanguageDropDown from "@/lib/LanguageDropDown.svelte";
 	import TaskScheduleModal from "./modals/TaskScheduleModal.svelte";
 	import TrustedHeaderAuthModal from "./modals/TrustedHeaderAuthModal.svelte";
 	import { resolve } from "$app/paths";
@@ -39,6 +40,7 @@
 	let debugDisabled = $state(false);
 	let jfDisabled = $state(false);
 	let tmdbkDisabled = $state(false);
+	let tmdblangDisabled = $state(false);
 	let plexHostDisabled = $state(false);
 	let countryDisabled = $state(false);
 	let useEmbyDisabled = $state(false);
@@ -240,6 +242,21 @@
 								});
 							}}
 							disabled={tmdbkDisabled}
+						/>
+					</Setting>
+					<Setting
+						title="Metadata Language"
+						desc="Language for titles, overviews and posters fetched from TMDB. Missing translations fall back to English."
+					>
+						<LanguageDropDown
+							selectedLang={serverConfig.TMDB_LANG ?? "en-US"}
+							disabled={tmdblangDisabled}
+							onChange={(l) => {
+								tmdblangDisabled = true;
+								updateServerConfig("TMDB_LANG", l, () => {
+									tmdblangDisabled = false;
+								});
+							}}
 						/>
 					</Setting>
 					<Setting
