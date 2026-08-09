@@ -1,6 +1,20 @@
+<script module lang="ts">
+	// Cached watched-list state, kept across navigations so returning to the
+	// list (browser back after opening a title) restores the loaded items and
+	// scroll position instead of reloading from the top.
+	let listCache: {
+		data: unknown[];
+		page: number;
+		pageMax: number;
+		scrollY: number;
+		key: string;
+	} | null = null;
+</script>
+
 <script lang="ts">
-	import { goto } from "$app/navigation";
+	import { beforeNavigate, goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
+	import { applyContentUpdates, setListOrder } from "@/lib/util/listNav.svelte";
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
@@ -16,6 +30,22 @@
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
+
+	// Cache the list (items + scroll) whenever we navigate away, so returning
+	// restores the view instead of reloading from the top. Captured here while
+	// still mounted, so it's ready by the time the page remounts on the way back.
+	let initialLoad = true;
+	beforeNavigate(() => {
+		if (dataLoader.state.data.length > 0) {
+			listCache = {
+				data: dataLoader.state.data,
+				page: dataLoader.state.page,
+				pageMax: dataLoader.state.pageMax,
+				scrollY: window.scrollY,
+				key: JSON.stringify(store.sortAndFiltersForQueryParams),
+			};
+		}
+	});
 
 	let nextLoadParams: {
 		page: number;
@@ -47,6 +77,26 @@
 		dataLoader.runFn();
 	}
 
+	// Scroll back to a saved position once the (async-rendered) list is tall
+	// enough to reach it — otherwise scrolling happens before the posters lay
+	// out and gets clamped near the top. Re-applies once more to win over
+	// SvelteKit's own early scroll restoration.
+	function restoreScrollTo(y: number) {
+		let tries = 0;
+		const step = () => {
+			const maxScroll =
+				document.documentElement.scrollHeight - window.innerHeight;
+			if (maxScroll >= y || tries >= 60) {
+				window.scrollTo(0, y);
+				requestAnimationFrame(() => window.scrollTo(0, y));
+				return;
+			}
+			tries++;
+			requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	}
+
 	// True when the type filter is set to exactly this single media type.
 	function isTypeOnly(t: string): boolean {
 		return (
@@ -57,18 +107,42 @@
 
 	// NOTE: This effect also handles initial load of data.
 	$effect(() => {
-		// When our sort/filter query params change,
-		// load our list again.
-		// Since it exists at load, this performs our
-		// initial load of data too.
-		if (store.sortAndFiltersForQueryParams) {
-			untrack(() => {
-				// We don't want to trigger another re-run of this
-				// effect when state inside these funcs changes.
-				dataLoader.reset();
-				dataLoader.runFn();
-			});
-		}
+		// Track sort/filter changes (also performs the initial load).
+		const qp = store.sortAndFiltersForQueryParams;
+		untrack(() => {
+			// On the first mount, if we have a cached list for this exact
+			// sort/filter (i.e. we're returning to the page), restore it and its
+			// scroll position instead of reloading from the top. Later runs
+			// (sort/filter changes) always reload.
+			if (
+				initialLoad &&
+				listCache &&
+				listCache.key === JSON.stringify(qp) &&
+				listCache.data.length > 0
+			) {
+				initialLoad = false;
+				// Patch in any items refreshed on their detail page (e.g. newly
+				// translated), leaving the rest of the cached list untouched.
+				dataLoader.state.data = applyContentUpdates(
+					listCache.data,
+				) as Media[];
+				dataLoader.state.page = listCache.page;
+				dataLoader.state.pageMax = listCache.pageMax;
+				restoreScrollTo(listCache.scrollY);
+				return;
+			}
+			initialLoad = false;
+			// We don't want to trigger another re-run of this
+			// effect when state inside these funcs changes.
+			dataLoader.reset();
+			dataLoader.runFn();
+		});
+	});
+
+	// Publish the current list order so detail pages can offer prev/next
+	// navigation (arrows + swipe) matching what's shown here.
+	$effect(() => {
+		setListOrder(dataLoader.state.data);
 	});
 
 	onDestroy(() => {
