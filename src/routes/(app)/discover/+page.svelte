@@ -23,12 +23,25 @@
 	import Error from "@/lib/Error.svelte";
 	import PersonPoster from "@/lib/poster/PersonPoster.svelte";
 	import FilterDropDown from "./FilterDropDown.svelte";
+	import BackButton from "@/lib/generic/BackButton.svelte";
 	import { resolve } from "$app/paths";
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
 
-	let discoverFilter: DiscoverFilter = $state(DiscoverFilter.trending);
+	// Read on init only (not in afterNavigate), so linking straight to a filter
+	// works without fighting the reset-to-trending done when the type changes.
+	let discoverFilter: DiscoverFilter = $state(filterFromUrl());
+
+	function filterFromUrl(): DiscoverFilter {
+		const f = page.url.searchParams.get("filter");
+		const valid = Object.values(DiscoverFilter) as string[];
+		if (f && valid.includes(f)) {
+			return f as DiscoverFilter;
+		}
+		return DiscoverFilter.trending;
+	}
+
 	let discoverType: SearchType | undefined = $derived.by(() => {
 		const t = page.url.searchParams.get("type");
 		if (t) {
@@ -104,6 +117,9 @@
 
 <div class="content">
 	<div class="inner">
+		<div class="back">
+			<BackButton />
+		</div>
 		<PageTitle title="Discover">
 			<div class="pagetitle-mediatypefilter">
 				<MediaTypeFilter
@@ -144,6 +160,7 @@
 							media={w}
 							bind:watched={dataLoader.state.data[i].watched}
 							fluidSize
+							showExternalRating
 						/>
 					{/if}
 				{/each}
@@ -177,6 +194,11 @@
 </div>
 
 <style lang="scss">
+	/* Align with PageTitle, which carries its own 15px side margin. */
+	.back {
+		margin: 0 15px;
+	}
+
 	.pagetitle-mediatypefilter {
 		@media screen and (max-width: 745px) {
 			width: 100%;

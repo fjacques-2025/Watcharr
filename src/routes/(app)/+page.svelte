@@ -172,27 +172,35 @@
 </span> -->
 
 <div class="type-toggle">
-	<button
-		class="plain"
-		data-active={!store.activeFilters?.type?.length}
-		onclick={() => setWatchedListMode("all")}
-	>
-		All
-	</button>
-	<button
-		class="plain"
-		data-active={isTypeOnly("tv")}
-		onclick={() => setWatchedListMode("tv")}
-	>
-		<Icon i="tv" wh={18} /> TV Shows
-	</button>
-	<button
-		class="plain"
-		data-active={isTypeOnly("movie")}
-		onclick={() => setWatchedListMode("movie")}
-	>
-		<Icon i="film" wh={18} /> Movies
-	</button>
+	<div class="segments">
+		<button
+			class="plain"
+			data-active={!store.activeFilters?.type?.length}
+			onclick={() => setWatchedListMode("all")}
+		>
+			All
+		</button>
+		<button
+			class="plain"
+			data-active={isTypeOnly("tv")}
+			onclick={() => setWatchedListMode("tv")}
+		>
+			<Icon i="tv" wh={18} /> TV Shows
+		</button>
+		<button
+			class="plain"
+			data-active={isTypeOnly("movie")}
+			onclick={() => setWatchedListMode("movie")}
+		>
+			<Icon i="film" wh={18} /> Movies
+		</button>
+	</div>
+	<!-- Not a fourth segment: the ones above filter your list, this one leaves
+	     the page. Kept detached (and stateless) so the shape says so. -->
+	<a class="intheatres" href={resolve("/discover?type=movie&filter=intheatres")}>
+		<Icon i="ticket" wh={18} /> In Theatres
+		<Icon i="chevron" facing="right" wh={13} />
+	</a>
 </div>
 
 {#if !isTypeOnly("movie")}
@@ -257,9 +265,42 @@
 		display: flex;
 		flex-flow: row;
 		flex-wrap: wrap;
-		gap: 10px;
+		align-items: center;
+		gap: 10px 26px;
 		justify-content: center;
 		margin: 0 auto 15px auto;
+
+		.segments {
+			display: flex;
+			flex-flow: row;
+			flex-wrap: wrap;
+			gap: 10px;
+			justify-content: center;
+		}
+
+		.intheatres {
+			display: flex;
+			flex-flow: row;
+			align-items: center;
+			gap: 6px;
+			padding: 8px 12px;
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: bold;
+			text-decoration: none;
+			opacity: 0.75;
+			color: $text-color;
+			fill: $text-color;
+			transition:
+				opacity 150ms ease,
+				background-color 150ms ease;
+
+			&:hover,
+			&:focus-visible {
+				opacity: 1;
+				background-color: $accent-color;
+			}
+		}
 
 		button {
 			display: flex;
