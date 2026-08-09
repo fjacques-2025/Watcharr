@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toExternalRating } from "../rating/helpers";
 	import { dateValid } from "../util/date";
 
 	interface Props {
@@ -13,12 +14,7 @@
 	let { homepage, title, releaseDate, endDate, voteAverage, voteCount }: Props =
 		$props();
 
-	// if voteAvg bigger than 10, it is out of 100, so no need to * by 10
-	const vote = $derived(
-		voteAverage
-			? Math.round(voteAverage > 10 ? voteAverage : voteAverage * 10) / 10
-			: 0,
-	);
+	const vote = $derived(toExternalRating(voteAverage));
 	const titleSafe = $derived(title ? title : "Unknown Title");
 	const releaseYear = $derived(
 		dateValid(releaseDate) ? releaseDate.getFullYear() : undefined,

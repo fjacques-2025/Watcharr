@@ -7,7 +7,14 @@
 
 	interface Props {
 		rating?: number | undefined;
-		handleStarClick: (rating: number) => void;
+		/**
+		 * When set, the widget becomes a read-only display of this text (already
+		 * formatted by the caller) instead of the user's own, interactive rating.
+		 * Used on browse pages to show the source's score, which you can't rate
+		 * away and shouldn't be able to edit here.
+		 */
+		staticText?: string | undefined;
+		handleStarClick?: (rating: number) => void;
 		disableInteraction?: boolean;
 		/**
 		 * When not minimal, we will use user settings to
@@ -21,7 +28,8 @@
 
 	let {
 		rating = undefined,
-		handleStarClick,
+		staticText = undefined,
+		handleStarClick = () => {},
 		disableInteraction = false,
 		minimal = false,
 		direction = "top",
@@ -30,6 +38,7 @@
 	}: Props = $props();
 
 	let ratingsShown = $state(false);
+	let isStatic = $derived(staticText !== undefined);
 
 	// let settings = $derived($userSettings);
 	let isUsingThumbs = $derived(
@@ -44,9 +53,13 @@
 		minimal ? (!rating ? "minimal" : "minimal-space") : "",
 		disableInteraction ? "interaction-disabled" : "",
 		minimal ? "is-minimal" : "",
+		// `plain` opts out of the global button styling (border, fill, and the
+		// hover that flips background to $text-color) — this isn't a button.
+		isStatic ? "is-static plain" : "",
 	].join(" ")}
 	onclick={(ev) => {
 		ev.stopPropagation();
+		if (isStatic) return;
 		ratingsShown = !ratingsShown;
 	}}
 	onmouseleave={() => {
@@ -58,7 +71,7 @@
 		condition: !!btnTooltip && !ratingsShown,
 	}}
 >
-	{#if !isUsingThumbs || (isUsingThumbs && minimal && !rating)}
+	{#if isStatic || !isUsingThumbs || (isUsingThumbs && minimal && !rating)}
 		<span
 			class="star"
 			style={hideStarWhenRated && rating ? "display: none" : ""}>*</span
@@ -70,7 +83,9 @@
 			"rating-text",
 		].join(" ")}
 	>
-		{#if rating}
+		{#if isStatic}
+			{staticText}
+		{:else if rating}
 			{#if isUsingThumbs}
 				{@const r = toWhichThumb(rating)}
 				{#if r === -1}
@@ -97,74 +112,76 @@
 		{/if}
 	</span>
 
-	<div
-		class={[
-			ratingsShown ? "shown" : "",
-			"small-scrollbar",
-			direction,
-			isUsingThumbs ? "is-using-thumbs" : "",
-			minimal ? "is-minimal" : "",
-		].join(" ")}
-	>
-		{#if isUsingThumbs}
-			<!-- svelte-ignore node_invalid_placement_ssr -->
-			<button
-				onclick={() => handleStarClick(1)}
-				class="plain{rating && rating > 0 && rating < 5 ? ' active' : ''}"
-				style="display: flex; justify-content: center;"
-			>
-				<i style="display: flex; width: 35px;"><Icon i="thumb-down" /></i>
-			</button>
-			<!-- svelte-ignore node_invalid_placement_ssr -->
-			<button
-				onclick={() => handleStarClick(5)}
-				class="plain{rating && rating > 4 && rating < 9 ? ' active' : ''}"
-				style="display: flex; justify-content: center;"
-			>
-				<span
-					style="display: flex; transform: translate(0px, -2px); font-size: 40px; height: 40px; font-family: 'Shrikhand';"
-				>
-					-
-				</span>
-			</button>
-			<!-- svelte-ignore node_invalid_placement_ssr -->
-			<button
-				onclick={() => handleStarClick(9)}
-				class="plain{rating && rating > 8 ? ' active' : ''}"
-				style="display: flex; justify-content: center;"
-			>
-				<i style="display: flex; width: 35px;"><Icon i="thumb-up" /></i>
-			</button>
-		{:else}
-			{@const stars =
-				store.userSettings?.ratingSystem == RatingSystem.OutOf5
-					? [5, 4, 3, 2, 1]
-					: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]}
-			{#each stars as v (v)}
+	{#if !isStatic}
+		<div
+			class={[
+				ratingsShown ? "shown" : "",
+				"small-scrollbar",
+				direction,
+				isUsingThumbs ? "is-using-thumbs" : "",
+				minimal ? "is-minimal" : "",
+			].join(" ")}
+		>
+			{#if isUsingThumbs}
 				<!-- svelte-ignore node_invalid_placement_ssr -->
 				<button
-					class="plain{rating === v ? ' active' : ''}"
-					onclick={(ev) => {
-						ev.stopPropagation();
-						handleStarClick(
-							store.userSettings?.ratingSystem === RatingSystem.OutOf5
-								? v * 2
-								: v,
-						);
-						ratingsShown = false;
-					}}
+					onclick={() => handleStarClick(1)}
+					class="plain{rating && rating > 0 && rating < 5 ? ' active' : ''}"
+					style="display: flex; justify-content: center;"
 				>
-					{#if store.userSettings?.ratingSystem === RatingSystem.OutOf100}
-						{v * 10}
-					{:else if store.userSettings?.ratingSystem === RatingSystem.OutOf5}
-						{v}
-					{:else}
-						{v}
-					{/if}
+					<i style="display: flex; width: 35px;"><Icon i="thumb-down" /></i>
 				</button>
-			{/each}
-		{/if}
-	</div>
+				<!-- svelte-ignore node_invalid_placement_ssr -->
+				<button
+					onclick={() => handleStarClick(5)}
+					class="plain{rating && rating > 4 && rating < 9 ? ' active' : ''}"
+					style="display: flex; justify-content: center;"
+				>
+					<span
+						style="display: flex; transform: translate(0px, -2px); font-size: 40px; height: 40px; font-family: 'Shrikhand';"
+					>
+						-
+					</span>
+				</button>
+				<!-- svelte-ignore node_invalid_placement_ssr -->
+				<button
+					onclick={() => handleStarClick(9)}
+					class="plain{rating && rating > 8 ? ' active' : ''}"
+					style="display: flex; justify-content: center;"
+				>
+					<i style="display: flex; width: 35px;"><Icon i="thumb-up" /></i>
+				</button>
+			{:else}
+				{@const stars =
+					store.userSettings?.ratingSystem == RatingSystem.OutOf5
+						? [5, 4, 3, 2, 1]
+						: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]}
+				{#each stars as v (v)}
+					<!-- svelte-ignore node_invalid_placement_ssr -->
+					<button
+						class="plain{rating === v ? ' active' : ''}"
+						onclick={(ev) => {
+							ev.stopPropagation();
+							handleStarClick(
+								store.userSettings?.ratingSystem === RatingSystem.OutOf5
+									? v * 2
+									: v,
+							);
+							ratingsShown = false;
+						}}
+					>
+						{#if store.userSettings?.ratingSystem === RatingSystem.OutOf100}
+							{v * 10}
+						{:else if store.userSettings?.ratingSystem === RatingSystem.OutOf5}
+							{v}
+						{:else}
+							{v}
+						{/if}
+					</button>
+				{/each}
+			{/if}
+		</div>
+	{/if}
 </button>
 
 <style lang="scss">
@@ -195,6 +212,30 @@
 				display: flex;
 				align-items: center;
 				font-size: 15px !important;
+			}
+		}
+
+		// Read-only source rating: reads as a score, not as a control.
+		// `plain` dropped the global button layout too, so restore the centering.
+		&.is-static {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: default;
+
+			// Gold rather than a theme token: the poster interior is darkened in
+			// both themes (see Poster.svelte, which hardcodes `color: white` here),
+			// so $rating-color would go black-on-black in the light theme.
+			.star,
+			.rating-text {
+				color: gold;
+			}
+
+			// Nothing happens on hover, so nothing should change.
+			&:hover span,
+			&:focus-visible span {
+				color: gold;
+				fill: gold;
 			}
 		}
 
