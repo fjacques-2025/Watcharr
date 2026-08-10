@@ -7,10 +7,15 @@
 	interface Props {
 		active?: string;
 		disabled?: boolean;
+		/**
+		 * Drop the People option. For browsing, where you're picking something to
+		 * watch — searching a person to reach their credits still makes sense.
+		 */
+		hidePeople?: boolean;
 		onChange: (nowActive: FilterType) => void;
 	}
 
-	let { active, disabled, onChange }: Props = $props();
+	let { active, disabled, hidePeople = false, onChange }: Props = $props();
 </script>
 
 <div class:disabled>
@@ -37,13 +42,15 @@
 			<Icon i="gamepad" wh={20} /> Games
 		</button>
 	{/if}
-	<button
-		class="plain"
-		data-active={active === "person"}
-		onclick={() => onChange("person")}
-	>
-		<Icon i="people-nocircle" wh={20} /> People
-	</button>
+	{#if !hidePeople}
+		<button
+			class="plain"
+			data-active={active === "person"}
+			onclick={() => onChange("person")}
+		>
+			<Icon i="people-nocircle" wh={20} /> People
+		</button>
+	{/if}
 </div>
 
 <style lang="scss">
