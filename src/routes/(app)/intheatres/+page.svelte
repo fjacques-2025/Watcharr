@@ -11,29 +11,56 @@
 	import paginatedLoader, {
 		PaginatedLoaderRunFnAction,
 	} from "@/lib/util/paginatedLoader.svelte";
+	import ShowtimesList from "@/lib/theatres/ShowtimesList.svelte";
 	import {
 		DiscoverFilter,
 		SearchType,
 		type DiscoverRequest,
 		type Media,
 		type PaginationResponse,
+		type TheatresResponse,
 	} from "@/types";
 	import { onDestroy, onMount } from "svelte";
 
-	// Which set of theatres we're showing. Only `all` is wired up: the other two
-	// need a per-venue showtimes source, which TMDB doesn't provide.
+	// Which set of theatres we're showing. `nearby` still needs geolocation plus
+	// venues we don't have showtimes for, so it stays out.
 	type Scope = "all" | "nearby" | "mine";
 
 	const scopes: { id: Scope; label: string; ready: boolean }[] = [
 		{ id: "all", label: "All", ready: true },
 		{ id: "nearby", label: "Near me", ready: false },
-		{ id: "mine", label: "My theatres", ready: false },
+		{ id: "mine", label: "My theatres", ready: true },
 	];
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
 
 	let activeScope: Scope = $state("all");
+
+	// `mine` comes from a different endpoint with no pagination, so it gets its
+	// own state rather than being forced through the paginated loader.
+	let mine: TheatresResponse | undefined = $state();
+	let mineLoading = $state(false);
+	let mineError: unknown = $state();
+
+	async function loadMine() {
+		mineLoading = true;
+		mineError = undefined;
+		try {
+			mine = await req.get<TheatresResponse>("/theatres/showtimes");
+		} catch (err) {
+			console.error("loadMine failed", err);
+			mineError = err;
+		} finally {
+			mineLoading = false;
+		}
+	}
+
+	$effect(() => {
+		if (activeScope === "mine" && !mine && !mineLoading && !mineError) {
+			loadMine();
+		}
+	});
 
 	let nextLoadParams: DiscoverRequest = $derived({
 		page: dataLoader.state.page + 1,
@@ -100,38 +127,67 @@
 			</div>
 		</PageTitle>
 
-		<PosterList>
-			{#if dataLoader.state.data?.length > 0}
-				{#each dataLoader.state.data as w, i (`${i}-${w.type}`)}
-					<Poster
-						media={w}
-						bind:watched={dataLoader.state.data[i].watched}
-						fluidSize
-						showExternalRating
-					/>
-				{/each}
-			{:else if !dataLoader.state.reqLoading && !dataLoader.state.reqLoadError}
-				<h2 class="norm">Nothing showing!</h2>
+		{#if activeScope === "mine"}
+			{#if mine?.films?.length}
+				<p class="day">
+					{mine.theatres.join(" · ")} — today
+				</p>
+				<ShowtimesList films={mine.films} />
+			{:else if !mineLoading && !mineError}
+				<h2 class="norm">Nothing left today at your theatres!</h2>
 			{/if}
-		</PosterList>
 
-		{#if dataLoader.state.reqLoading}
-			<div style="margin-bottom: 60px;">
-				<Spinner />
-			</div>
-		{/if}
+			{#if mineLoading}
+				<div style="margin-bottom: 60px;"><Spinner /></div>
+			{/if}
 
-		{#if dataLoader.state.reqLoadError}
-			<div style="margin-bottom: 60px;">
-				<Error
-					pretty="Failed to load what's showing!"
-					error={dataLoader.state.reqLoadError}
-					onRetry={() => {
-						dataLoader.state.reqLoadError = undefined;
-						dataLoader.runFn(PaginatedLoaderRunFnAction.ResetIfOnFirstOrNoPage);
-					}}
-				/>
-			</div>
+			{#if mineError}
+				<div style="margin-bottom: 60px;">
+					<Error
+						pretty="Failed to load your theatres' showtimes!"
+						error={mineError}
+						onRetry={() => {
+							loadMine();
+						}}
+					/>
+				</div>
+			{/if}
+		{:else}
+			<PosterList>
+				{#if dataLoader.state.data?.length > 0}
+					{#each dataLoader.state.data as w, i (`${i}-${w.type}`)}
+						<Poster
+							media={w}
+							bind:watched={dataLoader.state.data[i].watched}
+							fluidSize
+							showExternalRating
+						/>
+					{/each}
+				{:else if !dataLoader.state.reqLoading && !dataLoader.state.reqLoadError}
+					<h2 class="norm">Nothing showing!</h2>
+				{/if}
+			</PosterList>
+
+			{#if dataLoader.state.reqLoading}
+				<div style="margin-bottom: 60px;">
+					<Spinner />
+				</div>
+			{/if}
+
+			{#if dataLoader.state.reqLoadError}
+				<div style="margin-bottom: 60px;">
+					<Error
+						pretty="Failed to load what's showing!"
+						error={dataLoader.state.reqLoadError}
+						onRetry={() => {
+							dataLoader.state.reqLoadError = undefined;
+							dataLoader.runFn(
+								PaginatedLoaderRunFnAction.ResetIfOnFirstOrNoPage,
+							);
+						}}
+					/>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -140,6 +196,12 @@
 	/* Align with PageTitle, which carries its own 15px side margin. */
 	.back {
 		margin: 0 15px;
+	}
+
+	.day {
+		margin: 0 15px 10px 15px;
+		font-size: 13px;
+		color: $text-color-accent;
 	}
 
 	.scopes {
