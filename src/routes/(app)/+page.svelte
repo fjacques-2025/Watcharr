@@ -197,7 +197,7 @@
 	</div>
 	<!-- Not a fourth segment: the ones above filter your list, this one leaves
 	     the page. Kept detached (and stateless) so the shape says so. -->
-	<a class="intheatres" href={resolve("/discover?type=movie&filter=intheatres")}>
+	<a class="intheatres" href={resolve("/intheatres")}>
 		<Icon i="ticket" wh={18} /> In Theatres
 		<Icon i="chevron" facing="right" wh={13} />
 	</a>
