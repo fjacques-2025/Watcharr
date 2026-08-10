@@ -433,6 +433,17 @@ export interface TheatreScreenings {
 	showtimes: TheatreShowtime[];
 }
 
+export interface TeleramaReview {
+	title: string;
+	director?: string;
+	year?: number;
+	/** Number of "T"s, 0 to 4. */
+	rating: number;
+	/** Télérama's own word for it: "Bravo", "Très Bien", "Bien", "Bof", "Hélas". */
+	ratingLabel: string;
+	url: string;
+}
+
 export interface TheatreFilm {
 	/** Absent when we couldn't identify the film on TMDB (eg. retrospectives). */
 	media?: Media;
@@ -440,6 +451,8 @@ export interface TheatreFilm {
 	title: string;
 	genre?: string;
 	runtime?: number;
+	/** Absent when Télérama hasn't reviewed the film (or not recently). */
+	telerama?: TeleramaReview;
 	screenings: TheatreScreenings[];
 }
 
