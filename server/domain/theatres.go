@@ -1,6 +1,9 @@
 package domain
 
-import "github.com/sbondCo/Watcharr/media/erakys"
+import (
+	"github.com/sbondCo/Watcharr/media/erakys"
+	"github.com/sbondCo/Watcharr/media/telerama"
+)
 
 // One venue's screenings of a single film on the requested day.
 type TheatreScreenings struct {
@@ -21,6 +24,9 @@ type TheatreFilm struct {
 	// when Media is nil.
 	Genre   string `json:"genre,omitempty"`
 	Runtime int    `json:"runtime,omitempty"`
+	// Télérama's rating and a link to its review, when they have reviewed the
+	// film. Nil otherwise — their index only covers recent releases.
+	Telerama *telerama.Review `json:"telerama,omitempty"`
 	// Per-venue screenings, in the order the venues are configured.
 	Screenings []TheatreScreenings `json:"screenings"`
 }
