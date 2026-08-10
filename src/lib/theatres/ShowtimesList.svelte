@@ -51,6 +51,24 @@
 					{/if}
 				</h3>
 				<div class="meta">
+					{#if f.telerama}
+						<!-- Their scale is 0-4 "T"s. On mobile this link opens the
+						     Télérama app, where a subscriber gets the full review. -->
+						<a
+							class="telerama"
+							href={f.telerama.url}
+							target="_blank"
+							rel="noreferrer noopener"
+							title={`Télérama: ${f.telerama.ratingLabel} (${f.telerama.rating}/4) — read the review`}
+						>
+							{#if f.telerama.rating > 0}
+								<span class="ts" aria-hidden="true"
+									>{"T".repeat(f.telerama.rating)}</span
+								>
+							{/if}
+							<span class="label">{f.telerama.ratingLabel}</span>
+						</a>
+					{/if}
 					{#if f.genre}<span>{f.genre}</span>{/if}
 					{#if f.runtime}<span>{runtimeLabel(f.runtime)}</span>{/if}
 					{#if !f.media}
@@ -173,6 +191,34 @@
 		.unmatched {
 			font-style: italic;
 			cursor: help;
+		}
+	}
+
+	.telerama {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 5px;
+		text-decoration: none;
+		color: $text-color;
+
+		.ts {
+			font-weight: bold;
+			letter-spacing: 1px;
+			/* Télérama's own mark is a red T; keep the association without
+			   pretending to reproduce their logo. */
+			color: #e2001a;
+		}
+
+		.label {
+			color: $text-color-accent;
+		}
+
+		&:hover,
+		&:focus-visible {
+			.label {
+				color: $text-color;
+				text-decoration: underline;
+			}
 		}
 	}
 

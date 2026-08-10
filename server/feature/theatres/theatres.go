@@ -17,6 +17,7 @@ import (
 	"github.com/sbondCo/Watcharr/cache"
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/media/erakys"
+	"github.com/sbondCo/Watcharr/media/telerama"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
@@ -129,9 +130,13 @@ func (s *Service) Showtimes(
 	// theatrical releases first — a much smaller and better targeted set than
 	// full-text search, so far less room to pick the wrong film.
 	nowPlaying := s.nowPlayingIndex(region)
+	reviews := teleramaIndex()
 	for _, k := range order {
 		e := byTitle[k]
 		e.film.Media = s.matchFilm(k, e.film.Title, nowPlaying)
+		if r, ok := reviews[k]; ok {
+			e.film.Telerama = &r
+		}
 		for _, v := range venues {
 			if sc, ok := e.screenings[v.Name]; ok {
 				sort.Slice(sc.Showtimes, func(i, j int) bool {
@@ -151,6 +156,32 @@ func (s *Service) Showtimes(
 
 	dayStore.Set(cacheKey, &resp, cacheTTL)
 	return resp, nil
+}
+
+// teleramaIndex maps normalized title -> Télérama review.
+//
+// Failure is not fatal: showtimes without a critic's rating are still
+// showtimes, so we log and carry on with an empty index.
+func teleramaIndex() map[string]telerama.Review {
+	idx := map[string]telerama.Review{}
+	reviews, err := telerama.FetchIndex()
+	if err != nil {
+		slog.Error("theatres: telerama index unavailable, continuing without ratings",
+			"error", err)
+		return idx
+	}
+	for _, r := range reviews {
+		k := normalizeTitle(r.Title)
+		if k == "" {
+			continue
+		}
+		// First wins: the index is walked best-rating-first, and a duplicate
+		// title is far more likely a reissue than a re-rating.
+		if _, exists := idx[k]; !exists {
+			idx[k] = r
+		}
+	}
+	return idx
 }
 
 // nowPlayingIndex maps normalized title -> TMDB media for what is currently in
