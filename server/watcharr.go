@@ -48,6 +48,7 @@ import (
 	"github.com/sbondCo/Watcharr/feature/setup"
 	"github.com/sbondCo/Watcharr/feature/tag"
 	"github.com/sbondCo/Watcharr/feature/task"
+	"github.com/sbondCo/Watcharr/feature/theatres"
 	"github.com/sbondCo/Watcharr/feature/user"
 	"github.com/sbondCo/Watcharr/feature/user/services"
 	"github.com/sbondCo/Watcharr/feature/watched"
@@ -282,6 +283,7 @@ func main() {
 	tagService := tag.NewService(db, watchedService)
 	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
+	theatresService := theatres.NewService(tmdbService)
 	importService := imprt.NewService(
 		db,
 		watchedService,
@@ -322,6 +324,7 @@ func main() {
 	game.NewRouter(br, gameService, watchedService).AddRoutes()
 	search.NewRouter(br, searchService, watchedService).AddRoutes()
 	discover.NewRouter(br, discoverService, watchedService).AddRoutes()
+	theatres.NewRouter(br, theatresService).AddRoutes()
 	img.NewRouter(br).AddRoutes()
 
 	// Only add setup routes if there are no users found in db.
