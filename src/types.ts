@@ -420,6 +420,35 @@ export interface SearchResponseMeta {
 	fromMyList?: boolean;
 }
 
+export interface TheatreShowtime {
+	start: string;
+	end?: string;
+	/** "VO", "VOST" or "VF". Absent when the cinema doesn't state it. */
+	version?: string;
+	bookingUrl?: string;
+}
+
+export interface TheatreScreenings {
+	theatre: string;
+	showtimes: TheatreShowtime[];
+}
+
+export interface TheatreFilm {
+	/** Absent when we couldn't identify the film on TMDB (eg. retrospectives). */
+	media?: Media;
+	/** Title as the cinema publishes it — what's on the box office board. */
+	title: string;
+	genre?: string;
+	runtime?: number;
+	screenings: TheatreScreenings[];
+}
+
+export interface TheatresResponse {
+	day: string;
+	theatres: string[];
+	films: TheatreFilm[];
+}
+
 export enum DiscoverFilter {
 	trending = "trending",
 	popular = "popular",
