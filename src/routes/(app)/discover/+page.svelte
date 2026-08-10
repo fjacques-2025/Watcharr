@@ -125,6 +125,7 @@
 				<MediaTypeFilter
 					active={discoverType}
 					disabled={false}
+					hidePeople
 					onChange={(nowActive) => {
 						// Reset discoverFilter as we change type filter
 						// to avoid going into new type filter with unsupported
