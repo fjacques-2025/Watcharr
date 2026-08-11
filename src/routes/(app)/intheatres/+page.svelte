@@ -39,26 +39,67 @@
 
 	// `mine` comes from a different endpoint with no pagination, so it gets its
 	// own state rather than being forced through the paginated loader.
-	let mine: TheatresResponse | undefined = $state();
-	let mineLoading = $state(false);
-	let mineError: unknown = $state();
+	//
+	// Days are fetched one at a time, on demand, and kept. Pulling the whole week
+	// up front would mean 14 scrapes of two small cinemas' sites per refresh, to
+	// show six days you probably won't look at.
+	let days: Record<string, TheatresResponse> = $state({});
+	let selectedDay = $state(isoDay(new Date()));
+	let loadingDay: string | undefined = $state();
+	let failedDay: { day: string; error: unknown } | undefined = $state();
 
-	async function loadMine() {
-		mineLoading = true;
-		mineError = undefined;
+	let mine = $derived(days[selectedDay]);
+	let mineLoading = $derived(loadingDay === selectedDay);
+	let mineError = $derived(
+		failedDay?.day === selectedDay ? failedDay.error : undefined,
+	);
+
+	/** Local YYYY-MM-DD. Not toISOString(), which shifts to UTC and can land on
+	 *  the wrong day for anyone east of Greenwich. */
+	function isoDay(d: Date) {
+		return [
+			d.getFullYear(),
+			String(d.getMonth() + 1).padStart(2, "0"),
+			String(d.getDate()).padStart(2, "0"),
+		].join("-");
+	}
+
+	// Today plus six: cinema weeks run Wednesday to Tuesday, so a fixed
+	// Monday-to-Sunday strip would cut the current programme in half.
+	const week = Array.from({ length: 7 }, (_, i) => {
+		const d = new Date();
+		d.setDate(d.getDate() + i);
+		return {
+			iso: isoDay(d),
+			weekday: d.toLocaleDateString(undefined, { weekday: "short" }),
+			dayNum: d.getDate(),
+			isToday: i === 0,
+		};
+	});
+
+	async function loadDay(day: string) {
+		loadingDay = day;
+		if (failedDay?.day === day) failedDay = undefined;
 		try {
-			mine = await req.get<TheatresResponse>("/theatres/showtimes");
+			days[day] = await req.get<TheatresResponse>("/theatres/showtimes", {
+				params: { day },
+			});
 		} catch (err) {
-			console.error("loadMine failed", err);
-			mineError = err;
+			console.error("loadDay failed", day, err);
+			failedDay = { day, error: err };
 		} finally {
-			mineLoading = false;
+			if (loadingDay === day) loadingDay = undefined;
 		}
 	}
 
 	$effect(() => {
-		if (activeScope === "mine" && !mine && !mineLoading && !mineError) {
-			loadMine();
+		if (
+			activeScope === "mine" &&
+			!days[selectedDay] &&
+			loadingDay !== selectedDay &&
+			failedDay?.day !== selectedDay
+		) {
+			loadDay(selectedDay);
 		}
 	});
 
@@ -128,13 +169,31 @@
 		</PageTitle>
 
 		{#if activeScope === "mine"}
+			<div class="week">
+				{#each week as d (d.iso)}
+					<button
+						class="plain"
+						data-active={selectedDay === d.iso}
+						onclick={() => (selectedDay = d.iso)}
+					>
+						<span class="wd">{d.isToday ? "Today" : d.weekday}</span>
+						<span class="dn">{d.dayNum}</span>
+					</button>
+				{/each}
+			</div>
+
 			{#if mine?.films?.length}
-				<p class="day">
-					{mine.theatres.join(" · ")} — today
-				</p>
-				<ShowtimesList films={mine.films} />
+				<ShowtimesList
+					films={mine.films}
+					theatres={mine.theatres}
+					showSummary
+				/>
 			{:else if !mineLoading && !mineError}
-				<h2 class="norm">Nothing left today at your theatres!</h2>
+				<h2 class="norm">
+					{selectedDay === week[0].iso
+						? "Nothing left today at your theatres!"
+						: "Nothing programmed yet for that day."}
+				</h2>
 			{/if}
 
 			{#if mineLoading}
@@ -147,7 +206,7 @@
 						pretty="Failed to load your theatres' showtimes!"
 						error={mineError}
 						onRetry={() => {
-							loadMine();
+							loadDay(selectedDay);
 						}}
 					/>
 				</div>
@@ -198,10 +257,52 @@
 		margin: 0 15px;
 	}
 
-	.day {
-		margin: 0 15px 10px 15px;
-		font-size: 13px;
-		color: $text-color-accent;
+	.week {
+		display: flex;
+		flex-flow: row;
+		gap: 6px;
+		margin: 0 15px 16px 15px;
+		overflow-x: auto;
+		scrollbar-width: thin;
+
+		button {
+			display: flex;
+			flex-flow: column;
+			align-items: center;
+			gap: 1px;
+			flex: 1 1 0;
+			min-width: 58px;
+			padding: 7px 6px;
+			border-radius: 8px;
+			border: 1px solid $bg-color-accent;
+			color: $text-color;
+
+			.wd {
+				font-size: 11px;
+				text-transform: uppercase;
+				color: $text-color-accent;
+			}
+
+			.dn {
+				font-size: 17px;
+				font-weight: bold;
+				font-variant-numeric: tabular-nums;
+			}
+
+			&:hover {
+				border-color: $text-color;
+			}
+
+			&[data-active="true"] {
+				background-color: $accent-color-hover;
+				color: $bg-color;
+				border-color: $accent-color-hover;
+
+				.wd {
+					color: $bg-color;
+				}
+			}
+		}
 	}
 
 	.scopes {
