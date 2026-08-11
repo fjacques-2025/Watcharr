@@ -21,7 +21,6 @@
 	import PageTitle from "@/lib/generic/PageTitle.svelte";
 	import BackButton from "@/lib/generic/BackButton.svelte";
 	import Error from "@/lib/Error.svelte";
-	import tooltip from "@/lib/actions/tooltip";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader, {
 		PaginatedLoaderRunFnAction,
@@ -41,14 +40,17 @@
 	import { resolve } from "$app/paths";
 	import { restoreScrollTo } from "@/lib/util/restoreScroll";
 
-	// Which set of theatres we're showing. `nearby` still needs geolocation plus
-	// venues we don't have showtimes for, so it stays out.
-	type Scope = "all" | "nearby" | "mine";
+	// Which set of theatres we're showing.
+	//
+	// There was a "Near me" scope here. It's gone for now: the showtimes source
+	// only covers cinemas running the Erakys platform, and the other Marseille
+	// venues (Le Prado, Le Chambord) don't — so "near me" would have listed
+	// nothing the "My theatres" scope doesn't already show. See DEV-WATCHARR.md.
+	type Scope = "all" | "mine";
 
-	const scopes: { id: Scope; label: string; ready: boolean }[] = [
-		{ id: "all", label: "All", ready: true },
-		{ id: "nearby", label: "Near me", ready: false },
-		{ id: "mine", label: "My theatres", ready: true },
+	const scopes: { id: Scope; label: string }[] = [
+		{ id: "all", label: "All" },
+		{ id: "mine", label: "My theatres" },
 	];
 
 	const scroll = infScroll({ callback: onScrollToBottom });
@@ -67,9 +69,16 @@
 	// Today plus six: cinema weeks run Wednesday to Tuesday, so a fixed
 	// Monday-to-Sunday strip would cut the current programme in half.
 	// Declared before the state below, which reads it to validate the URL.
+	const today = new Date();
 	const week = Array.from({ length: 7 }, (_, i) => {
-		const d = new Date();
-		d.setDate(d.getDate() + i);
+		// Day arithmetic via the constructor's overflow, which rolls months and
+		// years over and stays on local calendar days across a DST change —
+		// unlike adding 86400000ms.
+		const d = new Date(
+			today.getFullYear(),
+			today.getMonth(),
+			today.getDate() + i,
+		);
 		return {
 			iso: isoDay(d),
 			weekday: d.toLocaleDateString(undefined, { weekday: "short" }),
@@ -102,7 +111,7 @@
 
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
-		return scopes.some((x) => x.id === s && x.ready) ? (s as Scope) : "all";
+		return scopes.some((x) => x.id === s) ? (s as Scope) : "all";
 	}
 
 	function dayFromUrl(): string {
@@ -117,10 +126,12 @@
 	 * flipping through seven days shouldn't leave seven steps for Back to unwind.
 	 */
 	function syncUrl() {
-		const p = new URLSearchParams();
-		if (activeScope !== "all") p.set("scope", activeScope);
-		if (selectedDay !== week[0].iso) p.set("day", selectedDay);
-		const qs = p.toString();
+		// Built by hand rather than with URLSearchParams: two params whose values
+		// are a fixed scope id and an ISO date, so there is nothing to escape.
+		const parts: string[] = [];
+		if (activeScope !== "all") parts.push(`scope=${activeScope}`);
+		if (selectedDay !== week[0].iso) parts.push(`day=${selectedDay}`);
+		const qs = parts.join("&");
 		// Two literal branches: `resolve` is typed against the route table and
 		// rejects a template whose prefix isn't a literal path.
 		goto(qs ? resolve(`/intheatres?${qs}`) : resolve("/intheatres"), {
@@ -219,15 +230,9 @@
 					<button
 						class="plain"
 						data-active={activeScope === s.id}
-						disabled={!s.ready}
 						onclick={() => {
 							activeScope = s.id;
 							syncUrl();
-						}}
-						use:tooltip={{
-							text: "Needs a showtimes source — not wired up yet.",
-							pos: "bot",
-							condition: !s.ready,
 						}}
 					>
 						{s.label}
@@ -394,12 +399,7 @@
 				color 150ms ease,
 				outline 150ms ease;
 
-			&:disabled {
-				opacity: 0.45;
-				cursor: not-allowed;
-			}
-
-			&:not(:disabled):hover,
+			&:hover,
 			&[data-active="true"] {
 				color: $bg-color;
 				fill: $bg-color;

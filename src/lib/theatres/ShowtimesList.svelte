@@ -139,6 +139,8 @@
 									? `${st.start} – ends ${st.end}`
 									: st.start}
 								{#if st.bookingUrl}
+									<!-- External URL: the cinema's own booking flow, so no
+									     resolve() — which is why eslint flags this line. -->
 									<a
 										class="slot"
 										href={st.bookingUrl}
