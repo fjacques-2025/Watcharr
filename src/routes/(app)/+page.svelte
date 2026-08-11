@@ -15,6 +15,7 @@
 	import { beforeNavigate, goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { applyContentUpdates, setListOrder } from "@/lib/util/listNav.svelte";
+	import { restoreScrollTo } from "@/lib/util/restoreScroll";
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import Poster from "@/lib/poster/Poster.svelte";
@@ -24,7 +25,11 @@
 	import { req } from "@/lib/util/api";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader from "@/lib/util/paginatedLoader.svelte";
-	import { clearActiveFilters, setWatchedListMode, store } from "@/store.svelte";
+	import {
+		clearActiveFilters,
+		setWatchedListMode,
+		store,
+	} from "@/store.svelte";
 	import { type Media, type PaginationResponse } from "@/types";
 	import { onDestroy, untrack } from "svelte";
 
@@ -77,26 +82,6 @@
 		dataLoader.runFn();
 	}
 
-	// Scroll back to a saved position once the (async-rendered) list is tall
-	// enough to reach it — otherwise scrolling happens before the posters lay
-	// out and gets clamped near the top. Re-applies once more to win over
-	// SvelteKit's own early scroll restoration.
-	function restoreScrollTo(y: number) {
-		let tries = 0;
-		const step = () => {
-			const maxScroll =
-				document.documentElement.scrollHeight - window.innerHeight;
-			if (maxScroll >= y || tries >= 60) {
-				window.scrollTo(0, y);
-				requestAnimationFrame(() => window.scrollTo(0, y));
-				return;
-			}
-			tries++;
-			requestAnimationFrame(step);
-		};
-		requestAnimationFrame(step);
-	}
-
 	// True when the type filter is set to exactly this single media type.
 	function isTypeOnly(t: string): boolean {
 		return (
@@ -123,9 +108,7 @@
 				initialLoad = false;
 				// Patch in any items refreshed on their detail page (e.g. newly
 				// translated), leaving the rest of the cached list untouched.
-				dataLoader.state.data = applyContentUpdates(
-					listCache.data,
-				) as Media[];
+				dataLoader.state.data = applyContentUpdates(listCache.data) as Media[];
 				dataLoader.state.page = listCache.page;
 				dataLoader.state.pageMax = listCache.pageMax;
 				restoreScrollTo(listCache.scrollY);
