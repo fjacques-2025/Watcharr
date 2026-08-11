@@ -21,6 +21,9 @@
 		type TheatresResponse,
 	} from "@/types";
 	import { onDestroy, onMount } from "svelte";
+	import { page } from "$app/state";
+	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 
 	// Which set of theatres we're showing. `nearby` still needs geolocation plus
 	// venues we don't have showtimes for, so it stays out.
@@ -35,25 +38,6 @@
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, undefined>(load);
 
-	let activeScope: Scope = $state("all");
-
-	// `mine` comes from a different endpoint with no pagination, so it gets its
-	// own state rather than being forced through the paginated loader.
-	//
-	// Days are fetched one at a time, on demand, and kept. Pulling the whole week
-	// up front would mean 14 scrapes of two small cinemas' sites per refresh, to
-	// show six days you probably won't look at.
-	let days: Record<string, TheatresResponse> = $state({});
-	let selectedDay = $state(isoDay(new Date()));
-	let loadingDay: string | undefined = $state();
-	let failedDay: { day: string; error: unknown } | undefined = $state();
-
-	let mine = $derived(days[selectedDay]);
-	let mineLoading = $derived(loadingDay === selectedDay);
-	let mineError = $derived(
-		failedDay?.day === selectedDay ? failedDay.error : undefined,
-	);
-
 	/** Local YYYY-MM-DD. Not toISOString(), which shifts to UTC and can land on
 	 *  the wrong day for anyone east of Greenwich. */
 	function isoDay(d: Date) {
@@ -66,6 +50,7 @@
 
 	// Today plus six: cinema weeks run Wednesday to Tuesday, so a fixed
 	// Monday-to-Sunday strip would cut the current programme in half.
+	// Declared before the state below, which reads it to validate the URL.
 	const week = Array.from({ length: 7 }, (_, i) => {
 		const d = new Date();
 		d.setDate(d.getDate() + i);
@@ -76,6 +61,58 @@
 			isToday: i === 0,
 		};
 	});
+
+	// Scope and day live in the URL so coming back to this page — browser back,
+	// the in-app Back button, a reload or a shared link — restores what you were
+	// actually looking at instead of resetting to "All, today".
+	let activeScope: Scope = $state(scopeFromUrl());
+
+	// `mine` comes from a different endpoint with no pagination, so it gets its
+	// own state rather than being forced through the paginated loader.
+	//
+	// Days are fetched one at a time, on demand, and kept. Pulling the whole week
+	// up front would mean 14 scrapes of two small cinemas' sites per refresh, to
+	// show six days you probably won't look at.
+	let days: Record<string, TheatresResponse> = $state({});
+	let selectedDay = $state(dayFromUrl());
+	let loadingDay: string | undefined = $state();
+	let failedDay: { day: string; error: unknown } | undefined = $state();
+
+	let mine = $derived(days[selectedDay]);
+	let mineLoading = $derived(loadingDay === selectedDay);
+	let mineError = $derived(
+		failedDay?.day === selectedDay ? failedDay.error : undefined,
+	);
+
+	function scopeFromUrl(): Scope {
+		const s = page.url.searchParams.get("scope");
+		return scopes.some((x) => x.id === s && x.ready) ? (s as Scope) : "all";
+	}
+
+	function dayFromUrl(): string {
+		const d = page.url.searchParams.get("day");
+		// Only accept a day we actually offer, so a stale or hand-edited link
+		// can't ask the cinemas for 1998.
+		return d && week.some((w) => w.iso === d) ? d : week[0].iso;
+	}
+
+	/**
+	 * Mirror scope and day into the URL, replacing the entry rather than pushing:
+	 * flipping through seven days shouldn't leave seven steps for Back to unwind.
+	 */
+	function syncUrl() {
+		const p = new URLSearchParams();
+		if (activeScope !== "all") p.set("scope", activeScope);
+		if (selectedDay !== week[0].iso) p.set("day", selectedDay);
+		const qs = p.toString();
+		// Two literal branches: `resolve` is typed against the route table and
+		// rejects a template whose prefix isn't a literal path.
+		goto(qs ? resolve(`/intheatres?${qs}`) : resolve("/intheatres"), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+		});
+	}
 
 	async function loadDay(day: string) {
 		loadingDay = day;
@@ -155,7 +192,10 @@
 						class="plain"
 						data-active={activeScope === s.id}
 						disabled={!s.ready}
-						onclick={() => (activeScope = s.id)}
+						onclick={() => {
+							activeScope = s.id;
+							syncUrl();
+						}}
 						use:tooltip={{
 							text: "Needs a showtimes source — not wired up yet.",
 							pos: "bot",
@@ -174,7 +214,10 @@
 					<button
 						class="plain"
 						data-active={selectedDay === d.iso}
-						onclick={() => (selectedDay = d.iso)}
+						onclick={() => {
+							selectedDay = d.iso;
+							syncUrl();
+						}}
 					>
 						<span class="wd">{d.isToday ? "Today" : d.weekday}</span>
 						<span class="dn">{d.dayNum}</span>

@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import Icon from "@/lib/Icon.svelte";
-	import { canGoBackInApp } from "@/lib/util/navHistory";
+	import { canGoBackInApp, lastInAppUrl } from "@/lib/util/navHistory";
 
 	function back() {
-		// Go back within the app when there's in-app history; otherwise (fresh
-		// load / deep link / PWA opened directly here) fall back to home.
+		// Go back within the app when there's in-app history. Otherwise (fresh
+		// load / deep link / PWA opened directly here) return to the page we came
+		// from if this tab remembers one — landing on the home list would throw
+		// away the listing you were browsing. Home only as a last resort.
 		if (canGoBackInApp()) {
 			history.back();
 		} else {
-			goto("/");
+			goto(lastInAppUrl() ?? "/");
 		}
 	}
 </script>

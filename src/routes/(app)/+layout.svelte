@@ -221,7 +221,7 @@
 	afterNavigate((nav) => {
 		// Record real in-app navigations so the Back button on detail pages
 		// knows there's somewhere to go back to.
-		if (nav?.from && nav.type !== "enter") markInAppNavigation();
+		if (nav?.from && nav.type !== "enter") markInAppNavigation(nav.from.url);
 		decideOnNavSplit();
 		closeAllSubMenus();
 	});
