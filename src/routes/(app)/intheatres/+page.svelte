@@ -1,3 +1,18 @@
+<script module lang="ts">
+	import type { TheatresResponse as CachedResponse } from "@/types";
+
+	// Kept across navigations so returning to this listing (Back from a film)
+	// restores the days already fetched and the scroll position, instead of
+	// refetching and dropping you at the top.
+	let cache: {
+		days: Record<string, CachedResponse>;
+		scrollY: number;
+		// Which view the scroll belongs to; restoring it onto a different day or
+		// scope would land somewhere arbitrary.
+		key: string;
+	} | null = null;
+</script>
+
 <script lang="ts">
 	import Spinner from "@/lib/Spinner.svelte";
 	import { req } from "@/lib/util/api";
@@ -22,8 +37,9 @@
 	} from "@/types";
 	import { onDestroy, onMount } from "svelte";
 	import { page } from "$app/state";
-	import { goto } from "$app/navigation";
+	import { beforeNavigate, goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
+	import { restoreScrollTo } from "@/lib/util/restoreScroll";
 
 	// Which set of theatres we're showing. `nearby` still needs geolocation plus
 	// venues we don't have showtimes for, so it stays out.
@@ -73,7 +89,7 @@
 	// Days are fetched one at a time, on demand, and kept. Pulling the whole week
 	// up front would mean 14 scrapes of two small cinemas' sites per refresh, to
 	// show six days you probably won't look at.
-	let days: Record<string, TheatresResponse> = $state({});
+	let days: Record<string, TheatresResponse> = $state(cache?.days ?? {});
 	let selectedDay = $state(dayFromUrl());
 	let loadingDay: string | undefined = $state();
 	let failedDay: { day: string; error: unknown } | undefined = $state();
@@ -166,8 +182,20 @@
 		dataLoader.runFn();
 	}
 
+	let viewKey = $derived(`${activeScope}|${selectedDay}`);
+
+	// Capture while still mounted, so it's ready by the time we come back.
+	beforeNavigate(() => {
+		cache = { days, scrollY: window.scrollY, key: viewKey };
+	});
+
 	onMount(() => {
 		dataLoader.runFn(PaginatedLoaderRunFnAction.Reset);
+		// Only restore onto the same view the scroll was taken from. Rows have
+		// fixed-height posters, so the list's height doesn't wait on images.
+		if (cache && cache.key === viewKey) {
+			restoreScrollTo(cache.scrollY);
+		}
 	});
 
 	onDestroy(() => {
