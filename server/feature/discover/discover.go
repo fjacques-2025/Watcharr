@@ -84,6 +84,8 @@ func (s *Service) DiscoverMovie(
 		err = s.discoverMultiTrending(tmdb.TrendingTypeMovie, meta, &resp)
 	case domain.DiscoverFilterInTheatres:
 		err = s.discoverMovieInTheatres(meta, &resp)
+	case domain.DiscoverFilterInTheatresNext:
+		err = s.discoverMovieInTheatresNext(meta, &resp)
 	case domain.DiscoverFilterUpcoming:
 		err = s.discoverMovieUpcoming(meta, &resp)
 	case domain.DiscoverFilterPopular:
@@ -198,6 +200,54 @@ func (s *Service) discoverMovieInTheatres(
 	)
 	if err != nil {
 		slog.Error("discoverMovieInTheatres: Failed to search tmdb!",
+			"error", err)
+		return errors.New("content request failed")
+	}
+	for _, v := range tmdbRes.Results {
+		resp.Results = append(
+			resp.Results,
+			v.AsMedia(),
+		)
+	}
+	resp.Page = tmdbRes.Page
+	resp.TotalPages = tmdbRes.TotalPages
+	resp.TotalResults = int64(tmdbRes.TotalResults)
+	return nil
+}
+
+// nextProgrammeWeek returns the week that follows the one currently showing.
+//
+// Cinema weeks don't start on Monday: in France the programme turns over on
+// Wednesday, so "next week" means from the coming Wednesday to the Tuesday
+// after it. Today being Wednesday still counts as this week, not next.
+func nextProgrammeWeek(now time.Time) (start, end time.Time) {
+	daysAhead := (int(time.Wednesday) - int(now.Weekday()) + 7) % 7
+	if daysAhead == 0 {
+		daysAhead = 7
+	}
+	start = now.AddDate(0, 0, daysAhead)
+	return start, start.AddDate(0, 0, 6)
+}
+
+func (s *Service) discoverMovieInTheatresNext(
+	meta domain.DiscoverRequestMeta,
+	resp *domain.DiscoverResponse,
+) error {
+	start, end := nextProgrammeWeek(time.Now())
+	tmdbRes, err := s.tmdb.DiscoverMovies(
+		tmdb.DiscoverOptions{
+			ReleaseDateMin:  start,
+			ReleaseDateMax:  end,
+			WithReleaseType: "2|3",
+			// Ascending here, unlike the current week: for what hasn't come out
+			// yet, the useful order is what arrives first.
+			SortBy: "release_date.asc",
+		},
+		meta.PageParams.Page,
+		meta.Region,
+	)
+	if err != nil {
+		slog.Error("discoverMovieInTheatresNext: Failed to search tmdb!",
 			"error", err)
 		return errors.New("content request failed")
 	}
