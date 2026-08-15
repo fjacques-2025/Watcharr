@@ -445,8 +445,10 @@
 				font-variant-numeric: tabular-nums;
 			}
 
-			&:hover {
-				border-color: $text-color;
+			@media (hover: hover) {
+				&:hover {
+					border-color: $text-color;
+				}
 			}
 
 			&[data-active="true"] {
@@ -479,7 +481,17 @@
 				color 150ms ease,
 				outline 150ms ease;
 
-			&:hover,
+			// Hover only where hovering exists. On touch, :hover sticks to
+			// whatever was last tapped — including the spot the previous page's
+			// link happened to occupy — so a second button would look selected.
+			@media (hover: hover) {
+				&:hover {
+					color: $bg-color;
+					fill: $bg-color;
+					background-color: $accent-color-hover;
+				}
+			}
+
 			&[data-active="true"] {
 				color: $bg-color;
 				fill: $bg-color;
