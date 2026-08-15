@@ -490,6 +490,10 @@
 		flex-wrap: nowrap;
 		gap: 8px;
 		margin: 0 15px 12px 15px;
+		// `safe` so that when the row does overflow, centring can't push the
+		// first button out of reach past the scroll origin.
+		justify-content: center;
+		justify-content: safe center;
 		overflow-x: auto;
 		scrollbar-width: none;
 
