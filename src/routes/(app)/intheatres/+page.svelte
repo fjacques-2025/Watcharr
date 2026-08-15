@@ -50,7 +50,7 @@
 	// Own cinemas first: it's the default, and putting the default anywhere but
 	// first makes the row read as if something else were selected.
 	const scopes: { id: Scope; label: string }[] = [
-		{ id: "mine", label: "My theatres" },
+		{ id: "mine", label: "Mine" },
 		{ id: "week", label: "This week" },
 		{ id: "next", label: "Next week" },
 	];
