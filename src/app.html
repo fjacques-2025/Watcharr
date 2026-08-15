@@ -5,10 +5,12 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/logo-col.png" />
-		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
-		<!-- Tints the status bar area to match the app instead of leaving a white
-		     band above a dark UI. Keyed on the OS scheme, which is the closest we
-		     can get: the in-app theme is a user setting the browser can't read. -->
+		<!-- The manifest itself comes from @vite-pwa/sveltekit (see vite.config.ts),
+		     which injects its own <link rel="manifest">. What it does NOT set is
+		     theme_color or the apple-specific tags, so those live here.
+		     Tints the status bar area instead of leaving a white band above a dark
+		     UI. Keyed on the OS scheme, the closest we can get: the in-app theme is
+		     a user setting the browser can't read. -->
 		<meta
 			name="theme-color"
 			media="(prefers-color-scheme: light)"
