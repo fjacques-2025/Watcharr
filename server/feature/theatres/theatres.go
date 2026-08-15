@@ -15,10 +15,13 @@ import (
 
 	gocache "github.com/robfig/go-cache"
 	"github.com/sbondCo/Watcharr/cache"
+	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
+	"github.com/sbondCo/Watcharr/feature/watched/addedtocontent"
 	"github.com/sbondCo/Watcharr/media/erakys"
 	"github.com/sbondCo/Watcharr/media/telerama"
 	"github.com/sbondCo/Watcharr/media/tmdb"
+	"github.com/sbondCo/Watcharr/util"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -36,20 +39,85 @@ const cacheTTL = 3 * time.Hour
 
 var dayStore = gocache.New(cacheTTL, 10*time.Minute)
 
-type Service struct {
-	tmdb *tmdb.TMDB
+type WatchedProvider interface {
+	GetWatchedItemBySupportedMediaId(
+		userId uint, id uint, t util.SupportedMedia,
+	) (entity.Watched, error)
+	GetWatchedItemsBySupportedMediaIds(
+		userId uint, c []addedtocontent.IdToTypePair,
+	) ([]entity.Watched, error)
 }
 
-func NewService(tmdb *tmdb.TMDB) *Service {
-	return &Service{tmdb: tmdb}
+type Service struct {
+	tmdb    *tmdb.TMDB
+	watched WatchedProvider
+}
+
+func NewService(tmdb *tmdb.TMDB, watched WatchedProvider) *Service {
+	return &Service{tmdb: tmdb, watched: watched}
 }
 
 // Showtimes lists the day's screenings across the configured venues, each film
-// matched to TMDB where possible.
+// matched to TMDB where possible and carrying the user's own list entry.
+func (s *Service) Showtimes(
+	r domain.TheatresRequest,
+	region string,
+	userId uint,
+) (domain.TheatresResponse, error) {
+	resp, err := s.programme(r, region)
+	if err != nil {
+		return resp, err
+	}
+	return s.withWatched(userId, resp), nil
+}
+
+// withWatched returns `resp` with the requesting user's list entries attached.
+//
+// It replaces the Films slice with a copy before writing: the original is the
+// shared cache entry, so writing into it would hand one user's list data to
+// whoever asks next.
+func (s *Service) withWatched(
+	userId uint,
+	resp domain.TheatresResponse,
+) domain.TheatresResponse {
+	if s.watched == nil || len(resp.Films) == 0 {
+		return resp
+	}
+	films := make([]domain.TheatreFilm, len(resp.Films))
+	copy(films, resp.Films)
+	resp.Films = films
+
+	// Only films we identified on TMDB can be matched to a list entry, so index
+	// back from the lookup's position to the film it came from.
+	media := []domain.Media{}
+	at := []int{}
+	for i, f := range films {
+		if f.Media != nil {
+			media = append(media, *f.Media)
+			at = append(at, i)
+		}
+	}
+	if len(media) == 0 {
+		return resp
+	}
+	if err := addedtocontent.AddList(
+		s.watched, userId, media,
+		func(i int, w *entity.Watched) {
+			dto := domain.NewWatchedDtoForLists(w)
+			films[at[i]].Watched = &dto
+		},
+	); err != nil {
+		// Not fatal: showtimes without the "seen it" marks are still showtimes.
+		slog.Error("theatres: failed to add watched data", "error", err)
+	}
+	return resp
+}
+
+// programme builds the day's listing, shared by all users and cached as such.
 //
 // A venue that fails is logged and skipped rather than failing the request: one
 // cinema's site being down shouldn't blank out the other's programme.
-func (s *Service) Showtimes(
+func (s *Service) programme(
 	r domain.TheatresRequest,
 	region string,
 ) (domain.TheatresResponse, error) {

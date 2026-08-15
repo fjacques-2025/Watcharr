@@ -453,6 +453,8 @@ export interface TheatreFilm {
 	runtime?: number;
 	/** Absent when Télérama hasn't reviewed the film (or not recently). */
 	telerama?: TeleramaReview;
+	/** Your own list entry, when the film is on it. */
+	watched?: Watched;
 	screenings: TheatreScreenings[];
 }
 

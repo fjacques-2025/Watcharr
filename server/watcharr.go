@@ -242,7 +242,7 @@ func main() {
 	tagService := tag.NewService(db, watchedService)
 	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
-	theatresService := theatres.NewService(tmdbService)
+	theatresService := theatres.NewService(tmdbService, watchedService)
 	importService := imprt.NewService(
 		db,
 		watchedService,

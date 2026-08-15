@@ -35,7 +35,11 @@ func (r *Router) GetShowtimes(c *gin.Context) {
 		})
 		return
 	}
-	resp, err := r.service.Showtimes(req, c.MustGet("userCountry").(string))
+	resp, err := r.service.Showtimes(
+		req,
+		c.MustGet("userCountry").(string),
+		c.MustGet("userId").(uint),
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: err.Error()})
 		return

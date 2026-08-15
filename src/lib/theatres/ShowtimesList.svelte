@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { resolve } from "$app/paths";
 	import Icon from "@/lib/Icon.svelte";
-	import type { TheatreFilm, TheatreShowtime } from "@/types";
+	import type {
+		TheatreFilm,
+		TheatreShowtime,
+		Watched,
+		WatchedStatus,
+	} from "@/types";
 
 	interface Props {
 		films: TheatreFilm[];
@@ -45,6 +50,28 @@
 		}
 		return byVenue.filter((s) => s.rows.length > 0);
 	});
+
+	// Statuses worth flagging on a listing, with the word to show. PLANNED is
+	// included because "I meant to see this" is just as useful as "seen" when
+	// you're scanning what's on tonight.
+	const marks: Partial<Record<WatchedStatus, string>> = {
+		FINISHED: "Seen",
+		DROPPED: "Dropped",
+		PLANNED: "Planned",
+		WATCHING: "Watching",
+		HOLD: "On hold",
+	};
+
+	/**
+	 * Month and year of the list entry. `createdAt` is when it was added, which
+	 * for imported history is the real watch date — the importer overwrites it
+	 * with the source's date (server: watched.go, WatchedDate).
+	 */
+	function watchedWhen(w: Watched) {
+		const d = new Date(w.createdAt);
+		if (isNaN(d.getTime())) return "";
+		return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+	}
 
 	function runtimeLabel(mins?: number) {
 		if (!mins) return "";
@@ -94,6 +121,18 @@
 								<a href={link}>{f.title}</a>
 							{:else}
 								{f.title}
+							{/if}
+							{#if f.watched && marks[f.watched.status]}
+								{@const when = watchedWhen(f.watched)}
+								<span
+									class="mark"
+									data-status={f.watched.status}
+									title={when
+										? `${marks[f.watched.status]} — added ${when}`
+										: marks[f.watched.status]}
+								>
+									{marks[f.watched.status]}{#if when}<em>{when}</em>{/if}
+								</span>
 							{/if}
 						</h3>
 						<div class="meta">
@@ -243,6 +282,37 @@
 		h3 {
 			font-size: 17px;
 			margin: 0;
+
+			.mark {
+				display: inline-flex;
+				align-items: baseline;
+				gap: 5px;
+				vertical-align: middle;
+				margin-left: 8px;
+				padding: 2px 7px;
+				border-radius: 999px;
+				font-size: 11px;
+				font-weight: bold;
+				text-transform: uppercase;
+				letter-spacing: 0.3px;
+				white-space: nowrap;
+				background-color: $bg-color-accent;
+				color: $text-color;
+
+				em {
+					font-style: normal;
+					font-weight: normal;
+					text-transform: none;
+					letter-spacing: 0;
+					opacity: 0.75;
+				}
+
+				// Seen is the one you scan for, so it's the only one that shouts.
+				&[data-status="FINISHED"] {
+					background-color: #2e7d32;
+					color: #fff;
+				}
+			}
 
 			a {
 				color: $text-color;
