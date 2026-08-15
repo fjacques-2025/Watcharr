@@ -33,6 +33,14 @@
 			id: DiscoverFilter.inTheatres,
 			value: "In Theatres",
 		},
+		// Present so this map stays exhaustive over DiscoverFilter, but not
+		// offered below: the filter is driven from the In Theatres page, which
+		// has its own week selector. Add it to `options` if Discover should
+		// offer it too.
+		intheatresnext: {
+			id: DiscoverFilter.inTheatresNext,
+			value: "In Theatres Next Week",
+		},
 		streaming: {
 			id: DiscoverFilter.streaming,
 			value: "Streaming",

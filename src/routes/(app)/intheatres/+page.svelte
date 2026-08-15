@@ -47,11 +47,14 @@
 	// only covers cinemas running the Erakys platform, and the other Marseille
 	// venues (Le Prado, Le Chambord) don't — so "near me" would have listed
 	// nothing the "My theatres" scope doesn't already show. See DEV-WATCHARR.md.
-	type Scope = "all" | "mine";
+	type Scope = "mine" | "week" | "next";
 
+	// Own cinemas first: it's the default, and putting the default anywhere but
+	// first makes the row read as if something else were selected.
 	const scopes: { id: Scope; label: string }[] = [
-		{ id: "all", label: "All" },
 		{ id: "mine", label: "My theatres" },
+		{ id: "week", label: "This week" },
+		{ id: "next", label: "Next week" },
 	];
 
 	const scroll = infScroll({ callback: onScrollToBottom });
@@ -136,6 +139,9 @@
 
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
+		// `all` was this page's earlier name for the current week's releases;
+		// keep older links working.
+		if (s === "all") return "week";
 		return scopes.some((x) => x.id === s) ? (s as Scope) : defaultScope;
 	}
 
@@ -201,10 +207,16 @@
 		}
 	});
 
+	let discoverFilter = $derived(
+		activeScope === "next"
+			? DiscoverFilter.inTheatresNext
+			: DiscoverFilter.inTheatres,
+	);
+
 	let nextLoadParams: DiscoverRequest = $derived({
 		page: dataLoader.state.page + 1,
 		type: SearchType.movie,
-		filter: DiscoverFilter.inTheatres,
+		filter: discoverFilter,
 	});
 
 	async function load(signal: AbortSignal) {
@@ -234,14 +246,16 @@
 		cache = { days, scrollY: window.scrollY, key: viewKey };
 	});
 
-	// Load the "All" list lazily, the first time that scope is actually shown.
-	// It used to load on mount regardless, which — now that "My theatres" is the
-	// default — meant a TMDB page fetched on every visit for nothing.
-	// A plain boolean, not $state: it must not re-trigger this effect.
-	let allRequested = false;
+	// The two release listings share one paginated loader, so switching between
+	// them has to reset it — otherwise page 2 of "next week" would be appended
+	// to page 1 of "this week". Loaded lazily too: neither is the default scope,
+	// so fetching on mount would cost a TMDB page per visit for nothing.
+	// A plain variable, not $state: it must not re-trigger this effect.
+	let loadedScope: Scope | undefined;
 	$effect(() => {
-		if (activeScope === "all" && !allRequested) {
-			allRequested = true;
+		if (activeScope !== "mine" && loadedScope !== activeScope) {
+			loadedScope = activeScope;
+			dataLoader.abortReq("scope changed");
 			dataLoader.runFn(PaginatedLoaderRunFnAction.Reset);
 		}
 	});
@@ -351,7 +365,11 @@
 						/>
 					{/each}
 				{:else if !dataLoader.state.reqLoading && !dataLoader.state.reqLoadError}
-					<h2 class="norm">Nothing showing!</h2>
+					<h2 class="norm">
+						{activeScope === "next"
+							? "Nothing announced for next week yet!"
+							: "Nothing showing!"}
+					</h2>
 				{/if}
 			</PosterList>
 
