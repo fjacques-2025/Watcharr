@@ -426,6 +426,10 @@
 			flex: 0 0 auto;
 			padding: 8px 14px;
 			border-radius: 8px;
+			// Outlined like the day chips below. Without it only the selected
+			// button had an edge, so the others' padding was invisible and the
+			// spacing read as uneven — and the two rows looked unrelated.
+			border: 1px solid $bg-color-accent;
 			font-size: 14px;
 			color: $text-color;
 			fill: $text-color;
@@ -445,11 +449,14 @@
 				}
 			}
 
+			// Same selected treatment as the day chips: fill the chip rather
+			// than ring it. The outline sat outside the box and made the
+			// selected button stand taller than its neighbours.
 			&[data-active="true"] {
 				color: $bg-color;
 				fill: $bg-color;
 				background-color: $accent-color-hover;
-				outline: 3px solid $accent-color;
+				border-color: $accent-color-hover;
 			}
 		}
 	}
