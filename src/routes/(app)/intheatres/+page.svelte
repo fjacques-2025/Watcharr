@@ -517,10 +517,12 @@
 		display: flex;
 		width: 100%;
 		justify-content: center;
-		// The nav leaves 20px below itself for every page. This one is a dense
-		// header, so it claws some of it back rather than starting a third of
-		// the way down a phone screen.
-		margin-top: -10px;
+		// Above this page sits: the nav's own 10px bottom padding, then its 20px
+		// bottom margin (global, left alone on purpose). Reclaiming 18 of those
+		// 20 leaves the nav's padding as the whole gap — enough to separate the
+		// two, and nothing more. Adjacent margins collapse, so this nets out
+		// rather than stacking.
+		margin-top: -18px;
 
 		.inner {
 			width: 100%;
