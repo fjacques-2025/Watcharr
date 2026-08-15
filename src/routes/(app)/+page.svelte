@@ -251,7 +251,11 @@
 		align-items: center;
 		gap: 10px 26px;
 		justify-content: center;
-		margin: 0 auto 15px auto;
+		// Above this row sits the nav's 10px bottom padding then its 20px bottom
+		// margin, which is global and left alone. Reclaim 18 of those 20 so the
+		// list starts right under the bar; adjacent margins collapse, so this
+		// nets out rather than stacking.
+		margin: -18px auto 15px auto;
 
 		.segments {
 			display: flex;
