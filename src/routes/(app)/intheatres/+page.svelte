@@ -104,9 +104,15 @@
 	let failedDay: { day: string; error: unknown } | undefined = $state();
 
 	let mine = $derived(days[selectedDay]);
-	let mineLoading = $derived(loadingDay === selectedDay);
+	// Only a spinner when there's nothing to show. A refresh over data we
+	// already have happens quietly underneath it.
+	let mineLoading = $derived(loadingDay === selectedDay && !days[selectedDay]);
+	// Likewise, a failed refresh must not replace a listing that's already on
+	// screen with an error box. Only report the failure when we have nothing.
 	let mineError = $derived(
-		failedDay?.day === selectedDay ? failedDay.error : undefined,
+		failedDay?.day === selectedDay && !days[selectedDay]
+			? failedDay.error
+			: undefined,
 	);
 
 	// "My theatres" is the default: it's the reason to open this page. "All" is
@@ -161,13 +167,22 @@
 		}
 	}
 
+	// Days already fetched are shown straight away, then refreshed underneath —
+	// otherwise the cache that preserves your scroll position would also freeze
+	// the listing for the whole session, so marking a film watched elsewhere
+	// would never show up here. Once per mount per day is enough: the server
+	// caches the programme for hours anyway.
+	// A plain object, not $state (nor a Set, which the reactivity lint rule
+	// would push towards SvelteSet): writing to it must not re-run this effect.
+	const revalidated: Record<string, true> = {};
 	$effect(() => {
 		if (
 			activeScope === "mine" &&
-			!days[selectedDay] &&
+			!revalidated[selectedDay] &&
 			loadingDay !== selectedDay &&
 			failedDay?.day !== selectedDay
 		) {
+			revalidated[selectedDay] = true;
 			loadDay(selectedDay);
 		}
 	});
