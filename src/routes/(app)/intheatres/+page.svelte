@@ -18,7 +18,6 @@
 	import { req } from "@/lib/util/api";
 	import Poster from "@/lib/poster/Poster.svelte";
 	import PosterList from "@/lib/poster/PosterList.svelte";
-	import PageTitle from "@/lib/generic/PageTitle.svelte";
 	import BackButton from "@/lib/generic/BackButton.svelte";
 	import Error from "@/lib/Error.svelte";
 	import infScroll from "@/lib/util/infScroll";
@@ -280,25 +279,37 @@
 
 <div class="content">
 	<div class="inner">
-		<div class="back">
+		<!-- Header kept to two rows: on a phone this page was spending a third of
+		     the screen before showing a single film. Back and the title share a
+		     row, and the country rides on the title rather than owning a line. -->
+		<div class="head">
 			<BackButton />
+			<h2>
+				In Theatres
+				{#if activeScope !== "mine"}
+					<span class="region" title="Set by the country on your profile">
+						{regionName}
+					</span>
+				{/if}
+			</h2>
 		</div>
-		<PageTitle title="In Theatres">
-			<div class="scopes">
-				{#each scopes as s (s.id)}
-					<button
-						class="plain"
-						data-active={activeScope === s.id}
-						onclick={() => {
-							activeScope = s.id;
-							syncUrl();
-						}}
-					>
-						{s.label}
-					</button>
-				{/each}
-			</div>
-		</PageTitle>
+
+		<!-- Scrolls sideways rather than wrapping: wrapping cost a whole row on
+		     narrow screens, and put the buttons under everything else. -->
+		<div class="scopes">
+			{#each scopes as s (s.id)}
+				<button
+					class="plain"
+					data-active={activeScope === s.id}
+					onclick={() => {
+						activeScope = s.id;
+						syncUrl();
+					}}
+				>
+					{s.label}
+				</button>
+			{/each}
+		</div>
 
 		{#if activeScope === "mine"}
 			<div class="week">
@@ -347,13 +358,6 @@
 				</div>
 			{/if}
 		{:else}
-			<!-- The listing is filtered by the country on your profile, which is
-			     otherwise invisible here — and a wrong one silently shows another
-			     country's releases. Naming it is enough to catch that; a standing
-			     link to the setting would just be clutter on every visit. -->
-			<p class="region" title="Set by the country on your profile">
-				Releases in <strong>{regionName}</strong>
-			</p>
 			<PosterList>
 				{#if dataLoader.state.data?.length > 0}
 					{#each dataLoader.state.data as w, i (`${i}-${w.type}`)}
@@ -399,21 +403,42 @@
 
 <style lang="scss">
 	/* Align with PageTitle, which carries its own 15px side margin. */
-	.back {
-		margin: 0 15px;
-	}
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 0 15px 10px 15px;
 
-	.region {
-		margin: 0 15px 12px 15px;
-		font-size: 13px;
-		color: $text-color-accent;
+		// BackButton carries its own bottom margin for the detail pages; here it
+		// sits on a shared row, so it must not push the row apart.
+		:global(.back-button) {
+			margin-bottom: 0;
+			flex: 0 0 auto;
+		}
+
+		h2 {
+			font-size: 20px;
+			margin: 0;
+			min-width: 0;
+		}
+
+		.region {
+			font-size: 13px;
+			font-weight: normal;
+			color: $text-color-accent;
+			cursor: help;
+
+			&::before {
+				content: "· ";
+			}
+		}
 	}
 
 	.week {
 		display: flex;
 		flex-flow: row;
 		gap: 6px;
-		margin: 0 15px 16px 15px;
+		margin: 0 15px 12px 15px;
 		overflow-x: auto;
 		scrollbar-width: thin;
 
@@ -462,9 +487,15 @@
 	.scopes {
 		display: flex;
 		flex-flow: row;
-		flex-wrap: wrap;
-		gap: 10px;
-		margin-left: auto;
+		flex-wrap: nowrap;
+		gap: 8px;
+		margin: 0 15px 12px 15px;
+		overflow-x: auto;
+		scrollbar-width: none;
+
+		button {
+			flex: 0 0 auto;
+		}
 
 		button {
 			padding: 8px 14px;
