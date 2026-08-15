@@ -5,7 +5,25 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/logo-col.png" />
-		<meta name="viewport" content="width=device-width" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		<!-- Tints the status bar area to match the app instead of leaving a white
+		     band above a dark UI. Keyed on the OS scheme, which is the closest we
+		     can get: the in-app theme is a user setting the browser can't read. -->
+		<meta
+			name="theme-color"
+			media="(prefers-color-scheme: light)"
+			content="#ffffff"
+		/>
+		<meta
+			name="theme-color"
+			media="(prefers-color-scheme: dark)"
+			content="#0f0f0f"
+		/>
+		<!-- Superseded by the manifest's `display` on iOS 16.4+, kept for older
+		     iOS, which only honours this. -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Watcharr" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Watcharr</title>
 		%sveltekit.head%
 	</head>
