@@ -410,8 +410,11 @@
 		margin: 0 15px 10px 15px;
 
 		// BackButton carries its own bottom margin for the detail pages; here it
-		// sits on a shared row, so it must not push the row apart.
-		:global(.back-button) {
+		// sits on a shared row, so it must not push the row apart. Selector
+		// includes the tag so it outranks the component's own `.back-button`
+		// rule — at equal specificity the winner depends on style order, and
+		// the leftover margin was inflating this row, half of it above the title.
+		:global(button.back-button) {
 			margin-bottom: 0;
 			flex: 0 0 auto;
 		}
@@ -539,6 +542,10 @@
 		display: flex;
 		width: 100%;
 		justify-content: center;
+		// The nav leaves 20px below itself for every page. This one is a dense
+		// header, so it claws some of it back rather than starting a third of
+		// the way down a phone screen.
+		margin-top: -10px;
 
 		.inner {
 			width: 100%;
