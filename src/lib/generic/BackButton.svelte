@@ -16,20 +16,24 @@
 	}
 </script>
 
-<button class="back-button" onclick={back} title="Go back">
-	<Icon i="arrow" wh={16} /> Back
+<!-- Arrow only: the word "Back" restated what the arrow already says, and it
+     cost width on every screen that carries this button. `aria-label` keeps the
+     name for assistive tech, which the text was otherwise providing. -->
+<button class="back-button" onclick={back} title="Go back" aria-label="Go back">
+	<Icon i="arrow" wh={18} />
 </button>
 
 <style lang="scss">
 	.back-button {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		justify-content: center;
 		width: max-content;
 		margin-bottom: 14px;
-		padding: 8px 14px;
+		// Squarer than before now that it holds a single glyph, but still wide
+		// enough to stay a comfortable target.
+		padding: 8px 12px;
 		border-radius: 8px;
-		font-weight: bold;
 		fill: currentColor;
 	}
 </style>
