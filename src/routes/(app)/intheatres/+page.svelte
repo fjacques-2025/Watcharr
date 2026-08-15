@@ -87,6 +87,12 @@
 		};
 	});
 
+	// "My theatres" is the default: it's the reason to open this page. "All" is
+	// the wider browse you fall back to, so it's the one that names itself in
+	// the URL.
+	// Declared before the state below, which reads it through scopeFromUrl().
+	const defaultScope: Scope = "mine";
+
 	// Scope and day live in the URL so coming back to this page — browser back,
 	// the in-app Back button, a reload or a shared link — restores what you were
 	// actually looking at instead of resetting to "All, today".
@@ -114,11 +120,6 @@
 			? failedDay.error
 			: undefined,
 	);
-
-	// "My theatres" is the default: it's the reason to open this page. "All" is
-	// the wider browse you fall back to, so it's the one that names itself in
-	// the URL.
-	const defaultScope: Scope = "mine";
 
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
