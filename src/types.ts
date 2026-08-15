@@ -470,6 +470,7 @@ export enum DiscoverFilter {
 	upcoming = "upcoming",
 	streaming = "streaming",
 	inTheatres = "intheatres",
+	inTheatresNext = "intheatresnext",
 }
 
 export type DiscoverFilterOption = `${DiscoverFilter}`;

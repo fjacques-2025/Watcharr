@@ -18,6 +18,9 @@ const (
 	DiscoverFilterStreaming DiscoverFilter = "streaming"
 	// What's in theatres (movies).
 	DiscoverFilterInTheatres DiscoverFilter = "intheatres"
+	// What reaches theatres next week (movies). Distinct from Upcoming, which
+	// spans a month: this is the coming week's programme change.
+	DiscoverFilterInTheatresNext DiscoverFilter = "intheatresnext"
 )
 
 type DiscoverRequest struct {
@@ -49,7 +52,8 @@ var ValidDiscoverFilter validator.Func = func(fl validator.FieldLevel) bool {
 			DiscoverFilterPopular,
 			DiscoverFilterUpcoming,
 			DiscoverFilterStreaming,
-			DiscoverFilterInTheatres:
+			DiscoverFilterInTheatres,
+			DiscoverFilterInTheatresNext:
 			return true
 		}
 	}
