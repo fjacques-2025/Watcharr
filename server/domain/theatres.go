@@ -27,6 +27,12 @@ type TheatreFilm struct {
 	// Télérama's rating and a link to its review, when they have reviewed the
 	// film. Nil otherwise — their index only covers recent releases.
 	Telerama *telerama.Review `json:"telerama,omitempty"`
+	// The requesting user's entry for this film, when it's on their list.
+	//
+	// Deliberately here and not on `Media`: the film list is cached and shared
+	// between users, whereas this is per-user. Keeping it on the outer struct
+	// lets us attach it to a copy without touching the cached Media.
+	Watched *WatchedDto `json:"watched,omitempty"`
 	// Per-venue screenings, in the order the venues are configured.
 	Screenings []TheatreScreenings `json:"screenings"`
 }
