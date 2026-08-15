@@ -42,7 +42,13 @@ export default defineConfig({
 				],
 			},
 			devOptions: {
-				enabled: true,
+				// Off in dev on purpose. A precaching service worker in front of a
+				// dev server means every asset change can leave a stale or broken
+				// precache serving the app — at best confusing, at worst an
+				// infinite reload when a precached URL stops existing.
+				// Production builds still generate the service worker; only `vite
+				// dev` is affected.
+				enabled: false,
 			},
 		}),
 	],
