@@ -865,6 +865,11 @@ type DiscoverOptions struct {
 	// Release types are listed on this page:
 	// https://developer.themoviedb.org/reference/movie-release-dates
 	WithReleaseType string
+	// Passed straight through as TMDB's `sort_by`, e.g. "release_date.desc".
+	// Not translated between movie and tv naming like the fields above: the
+	// accepted values differ per endpoint, so the caller states what it wants.
+	// Empty leaves TMDB's default, which is popularity.
+	SortBy string
 }
 
 //

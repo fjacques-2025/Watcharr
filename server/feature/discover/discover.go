@@ -186,6 +186,12 @@ func (s *Service) discoverMovieInTheatres(
 			ReleaseDateMin:  time.Now().AddDate(0, 0, -40),
 			ReleaseDateMax:  time.Now().AddDate(0, 0, 2),
 			WithReleaseType: "2|3",
+			// Newest release first rather than TMDB's popularity default: on a
+			// "what's on right now" list, what came out this week is the point,
+			// and popularity order reads as no order at all. `release_date`
+			// rather than `primary_release_date` so it follows the release in
+			// the requested region, not the film's original country.
+			SortBy: "release_date.desc",
 		},
 		meta.PageParams.Page,
 		meta.Region,

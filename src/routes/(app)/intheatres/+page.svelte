@@ -109,9 +109,14 @@
 		failedDay?.day === selectedDay ? failedDay.error : undefined,
 	);
 
+	// "My theatres" is the default: it's the reason to open this page. "All" is
+	// the wider browse you fall back to, so it's the one that names itself in
+	// the URL.
+	const defaultScope: Scope = "mine";
+
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
-		return scopes.some((x) => x.id === s) ? (s as Scope) : "all";
+		return scopes.some((x) => x.id === s) ? (s as Scope) : defaultScope;
 	}
 
 	function dayFromUrl(): string {
@@ -129,7 +134,7 @@
 		// Built by hand rather than with URLSearchParams: two params whose values
 		// are a fixed scope id and an ISO date, so there is nothing to escape.
 		const parts: string[] = [];
-		if (activeScope !== "all") parts.push(`scope=${activeScope}`);
+		if (activeScope !== defaultScope) parts.push(`scope=${activeScope}`);
 		if (selectedDay !== week[0].iso) parts.push(`day=${selectedDay}`);
 		const qs = parts.join("&");
 		// Two literal branches: `resolve` is typed against the route table and
@@ -200,8 +205,19 @@
 		cache = { days, scrollY: window.scrollY, key: viewKey };
 	});
 
+	// Load the "All" list lazily, the first time that scope is actually shown.
+	// It used to load on mount regardless, which — now that "My theatres" is the
+	// default — meant a TMDB page fetched on every visit for nothing.
+	// A plain boolean, not $state: it must not re-trigger this effect.
+	let allRequested = false;
+	$effect(() => {
+		if (activeScope === "all" && !allRequested) {
+			allRequested = true;
+			dataLoader.runFn(PaginatedLoaderRunFnAction.Reset);
+		}
+	});
+
 	onMount(() => {
-		dataLoader.runFn(PaginatedLoaderRunFnAction.Reset);
 		// Only restore onto the same view the scroll was taken from. Rows have
 		// fixed-height posters, so the list's height doesn't wait on images.
 		if (cache && cache.key === viewKey) {
