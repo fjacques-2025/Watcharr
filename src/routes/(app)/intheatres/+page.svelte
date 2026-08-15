@@ -38,7 +38,6 @@
 	import { beforeNavigate, goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { restoreScrollTo } from "@/lib/util/restoreScroll";
-	import { store } from "@/store.svelte";
 
 	// Which set of theatres we're showing.
 	//
@@ -123,18 +122,6 @@
 			? failedDay.error
 			: undefined,
 	);
-
-	// The country the "All" listing is filtered by. Shown as a full name — an
-	// ISO code tells you nothing when it's wrong, which is the case that matters.
-	let regionName = $derived.by(() => {
-		const c = store.userSettings?.country;
-		if (!c) return "your country";
-		try {
-			return new Intl.DisplayNames(undefined, { type: "region" }).of(c) ?? c;
-		} catch {
-			return c;
-		}
-	});
 
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
@@ -279,36 +266,27 @@
 
 <div class="content">
 	<div class="inner">
-		<!-- Header kept to two rows: on a phone this page was spending a third of
-		     the screen before showing a single film. Back and the title share a
-		     row, and the country rides on the title rather than owning a line. -->
+		<!-- One row: Back left, scopes right. The page title was dropped — the
+		     scopes already say where you are, and on a phone that row was 4% of the
+		     screen before a single film appeared. -->
 		<div class="head">
 			<BackButton />
-			<h2>
-				In Theatres
-				{#if activeScope !== "mine"}
-					<span class="region" title="Set by the country on your profile">
-						{regionName}
-					</span>
-				{/if}
-			</h2>
-		</div>
-
-		<!-- Scrolls sideways rather than wrapping: wrapping cost a whole row on
-		     narrow screens, and put the buttons under everything else. -->
-		<div class="scopes">
-			{#each scopes as s (s.id)}
-				<button
-					class="plain"
-					data-active={activeScope === s.id}
-					onclick={() => {
-						activeScope = s.id;
-						syncUrl();
-					}}
-				>
-					{s.label}
-				</button>
-			{/each}
+			<!-- Scrolls sideways rather than wrapping, so a narrow screen keeps the
+			     row intact instead of spending a second line on it. -->
+			<div class="scopes">
+				{#each scopes as s (s.id)}
+					<button
+						class="plain"
+						data-active={activeScope === s.id}
+						onclick={() => {
+							activeScope = s.id;
+							syncUrl();
+						}}
+					>
+						{s.label}
+					</button>
+				{/each}
+			</div>
 		</div>
 
 		{#if activeScope === "mine"}
@@ -406,105 +384,46 @@
 	.head {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 10px;
 		margin: 0 15px 10px 15px;
 
 		// BackButton carries its own bottom margin for the detail pages; here it
-		// sits on a shared row, so it must not push the row apart. Selector
-		// includes the tag so it outranks the component's own `.back-button`
-		// rule — at equal specificity the winner depends on style order, and
-		// the leftover margin was inflating this row, half of it above the title.
+		// shares a row, so it must not push the row apart. The selector includes
+		// the tag to outrank the component's own rule — at equal specificity the
+		// winner depends on style order.
 		:global(button.back-button) {
 			margin-bottom: 0;
 			flex: 0 0 auto;
 		}
 
-		h2 {
-			font-size: 20px;
-			margin: 0;
-			min-width: 0;
-		}
-
-		.region {
-			font-size: 13px;
-			font-weight: normal;
-			color: $text-color-accent;
-			cursor: help;
-
-			&::before {
-				content: "· ";
-			}
-		}
-	}
-
-	.week {
-		display: flex;
-		flex-flow: row;
-		gap: 6px;
-		margin: 0 15px 12px 15px;
-		overflow-x: auto;
-		scrollbar-width: thin;
-
-		button {
+		// Back carries a 2px border the scope buttons don't, so matching their
+		// paddings still left it taller. Pin both to one height instead and
+		// centre the contents — that survives any later padding tweak.
+		:global(button.back-button),
+		.scopes button {
 			display: flex;
-			flex-flow: column;
 			align-items: center;
-			gap: 1px;
-			flex: 1 1 0;
-			min-width: 58px;
-			padding: 7px 6px;
-			border-radius: 8px;
-			border: 1px solid $bg-color-accent;
-			color: $text-color;
-
-			.wd {
-				font-size: 11px;
-				text-transform: uppercase;
-				color: $text-color-accent;
-			}
-
-			.dn {
-				font-size: 17px;
-				font-weight: bold;
-				font-variant-numeric: tabular-nums;
-			}
-
-			@media (hover: hover) {
-				&:hover {
-					border-color: $text-color;
-				}
-			}
-
-			&[data-active="true"] {
-				background-color: $accent-color-hover;
-				color: $bg-color;
-				border-color: $accent-color-hover;
-
-				.wd {
-					color: $bg-color;
-				}
-			}
+			height: 38px;
+			padding-top: 0;
+			padding-bottom: 0;
 		}
 	}
 
 	.scopes {
 		display: flex;
-		flex-flow: row;
-		flex-wrap: nowrap;
+		flex-flow: row nowrap;
 		gap: 8px;
-		margin: 0 15px 12px 15px;
-		// `safe` so that when the row does overflow, centring can't push the
-		// first button out of reach past the scroll origin.
-		justify-content: center;
-		justify-content: safe center;
+		min-width: 0;
+		margin-left: auto;
 		overflow-x: auto;
 		scrollbar-width: none;
+		// `safe` so that when the row does overflow, right-alignment can't push
+		// the first button past the scroll origin, out of reach.
+		justify-content: flex-end;
+		justify-content: safe flex-end;
 
 		button {
 			flex: 0 0 auto;
-		}
-
-		button {
 			padding: 8px 14px;
 			border-radius: 8px;
 			font-size: 14px;
@@ -530,10 +449,59 @@
 				color: $bg-color;
 				fill: $bg-color;
 				background-color: $accent-color-hover;
+				outline: 3px solid $accent-color;
+			}
+		}
+	}
+
+	.week {
+		display: flex;
+		flex-flow: row;
+		gap: 6px;
+		margin: 0 15px 12px 15px;
+		overflow-x: auto;
+		scrollbar-width: thin;
+
+		button {
+			// One line per day rather than two: the strip already scrolls, so
+			// spending a second line to stack the weekday above the number was
+			// pure height. Chips size to their content instead of sharing the
+			// width equally, which keeps them compact.
+			display: flex;
+			flex-flow: row;
+			align-items: baseline;
+			gap: 5px;
+			flex: 0 0 auto;
+			padding: 6px 11px;
+			border-radius: 8px;
+			border: 1px solid $bg-color-accent;
+			color: $text-color;
+
+			.wd {
+				font-size: 12px;
+				color: $text-color-accent;
+			}
+
+			.dn {
+				font-size: 15px;
+				font-weight: bold;
+				font-variant-numeric: tabular-nums;
+			}
+
+			@media (hover: hover) {
+				&:hover {
+					border-color: $text-color;
+				}
 			}
 
 			&[data-active="true"] {
-				outline: 3px solid $accent-color;
+				background-color: $accent-color-hover;
+				color: $bg-color;
+				border-color: $accent-color-hover;
+
+				.wd {
+					color: $bg-color;
+				}
 			}
 		}
 	}
