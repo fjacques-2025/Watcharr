@@ -90,4 +90,7 @@ func (t *TMDB) applyDiscoverOptionsToMap(
 	if o.WithReleaseType != "" {
 		m[withReleaseTypeKey] = o.WithReleaseType
 	}
+	if o.SortBy != "" {
+		m["sort_by"] = o.SortBy
+	}
 }
