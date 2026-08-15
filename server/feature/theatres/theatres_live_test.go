@@ -31,8 +31,10 @@ func TestShowtimesLive(t *testing.T) {
 		lang = "fr-FR"
 	}
 
-	s := NewService(tmdb.NewTMDB(key, lang))
-	resp, err := s.Showtimes(domain.TheatresRequest{}, "FR")
+	// nil watched provider: this test exercises the scraping and matching
+	// path, not the per-user list data, and withWatched no-ops without one.
+	s := NewService(tmdb.NewTMDB(key, lang), nil)
+	resp, err := s.Showtimes(domain.TheatresRequest{}, "FR", 0)
 	if err != nil {
 		t.Fatalf("Showtimes: %v", err)
 	}
