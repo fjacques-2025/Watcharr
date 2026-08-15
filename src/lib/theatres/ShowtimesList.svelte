@@ -117,11 +117,15 @@
 
 					<div class="body">
 						<h3>
-							{#if link}
-								<a href={link}>{f.title}</a>
-							{:else}
-								{f.title}
-							{/if}
+							<!-- Wrapped so the title is a flex item of its own: it can then
+							     shrink and wrap while the badge keeps its size on the right. -->
+							<span class="t">
+								{#if link}
+									<a href={link}>{f.title}</a>
+								{:else}
+									{f.title}
+								{/if}
+							</span>
 							{#if f.watched && marks[f.watched.status]}
 								{@const when = watchedWhen(f.watched)}
 								<span
@@ -280,15 +284,24 @@
 		flex: 1 1 auto;
 
 		h3 {
+			display: flex;
+			align-items: baseline;
+			gap: 10px;
 			font-size: 17px;
 			margin: 0;
+
+			.t {
+				// Lets a long title wrap instead of pushing the badge off the row.
+				min-width: 0;
+			}
 
 			.mark {
 				display: inline-flex;
 				align-items: baseline;
 				gap: 5px;
-				vertical-align: middle;
-				margin-left: 8px;
+				// Pinned right, and never squeezed by a long title.
+				margin-left: auto;
+				flex: 0 0 auto;
 				padding: 2px 7px;
 				border-radius: 999px;
 				font-size: 11px;
