@@ -349,10 +349,10 @@
 		{:else}
 			<!-- The listing is filtered by the country on your profile, which is
 			     otherwise invisible here — and a wrong one silently shows another
-			     country's releases. Name it, and link to where it's changed. -->
-			<p class="region">
-				Releases in <strong>{regionName}</strong> ·
-				<a href={resolve("/profile")}>change country</a>
+			     country's releases. Naming it is enough to catch that; a standing
+			     link to the setting would just be clutter on every visit. -->
+			<p class="region" title="Set by the country on your profile">
+				Releases in <strong>{regionName}</strong>
 			</p>
 			<PosterList>
 				{#if dataLoader.state.data?.length > 0}
@@ -407,10 +407,6 @@
 		margin: 0 15px 12px 15px;
 		font-size: 13px;
 		color: $text-color-accent;
-
-		a {
-			color: $text-color-accent;
-		}
 	}
 
 	.week {
