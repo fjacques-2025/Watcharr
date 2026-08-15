@@ -39,6 +39,7 @@
 	import { beforeNavigate, goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { restoreScrollTo } from "@/lib/util/restoreScroll";
+	import { store } from "@/store.svelte";
 
 	// Which set of theatres we're showing.
 	//
@@ -120,6 +121,18 @@
 			? failedDay.error
 			: undefined,
 	);
+
+	// The country the "All" listing is filtered by. Shown as a full name — an
+	// ISO code tells you nothing when it's wrong, which is the case that matters.
+	let regionName = $derived.by(() => {
+		const c = store.userSettings?.country;
+		if (!c) return "your country";
+		try {
+			return new Intl.DisplayNames(undefined, { type: "region" }).of(c) ?? c;
+		} catch {
+			return c;
+		}
+	});
 
 	function scopeFromUrl(): Scope {
 		const s = page.url.searchParams.get("scope");
@@ -320,6 +333,13 @@
 				</div>
 			{/if}
 		{:else}
+			<!-- The listing is filtered by the country on your profile, which is
+			     otherwise invisible here — and a wrong one silently shows another
+			     country's releases. Name it, and link to where it's changed. -->
+			<p class="region">
+				Releases in <strong>{regionName}</strong> ·
+				<a href={resolve("/profile")}>change country</a>
+			</p>
 			<PosterList>
 				{#if dataLoader.state.data?.length > 0}
 					{#each dataLoader.state.data as w, i (`${i}-${w.type}`)}
@@ -363,6 +383,16 @@
 	/* Align with PageTitle, which carries its own 15px side margin. */
 	.back {
 		margin: 0 15px;
+	}
+
+	.region {
+		margin: 0 15px 12px 15px;
+		font-size: 13px;
+		color: $text-color-accent;
+
+		a {
+			color: $text-color-accent;
+		}
 	}
 
 	.week {
