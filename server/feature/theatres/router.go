@@ -21,7 +21,7 @@ func NewRouter(br *router.BaseRouter, service *Service) *Router {
 
 func (r *Router) AddRoutes() {
 	theatres := r.br.Router.Group("/theatres").
-		Use(authmiddleware.AuthRequired(r.br.DB, r.br.Cfg))
+		Use(authmiddleware.AuthRequired(r.br.Cfg))
 
 	theatres.GET("/showtimes", router.WhereaboutsRequired(r.br.Cfg), r.GetShowtimes)
 }
