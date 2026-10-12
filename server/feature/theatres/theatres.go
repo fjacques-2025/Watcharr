@@ -238,16 +238,35 @@ func teleramaIndex() map[string]telerama.Review {
 			"error", err)
 		return idx
 	}
+	return indexReviews(reviews)
+}
+
+// indexReviews keys reviews by normalized title, dropping any title that
+// Télérama lists under conflicting ratings.
+//
+// A title is not a film: "Jane" is both a 4T documentary and a 1T drama, and
+// two different "Kraken" came out in 2026. We only match on the title, so for
+// those we can't tell which one is screening — and a confident wrong rating is
+// worse than none. Same title with the same rating (a reissue listed twice,
+// like "Abyss") is harmless and kept.
+func indexReviews(reviews []telerama.Review) map[string]telerama.Review {
+	idx := map[string]telerama.Review{}
+	ambiguous := map[string]bool{}
 	for _, r := range reviews {
 		k := normalizeTitle(r.Title)
-		if k == "" {
+		if k == "" || ambiguous[k] {
 			continue
 		}
-		// First wins: the index is walked best-rating-first, and a duplicate
-		// title is far more likely a reissue than a re-rating.
-		if _, exists := idx[k]; !exists {
-			idx[k] = r
+		if prev, exists := idx[k]; exists {
+			if prev.Rating != r.Rating {
+				delete(idx, k)
+				ambiguous[k] = true
+				slog.Debug("theatres: ambiguous Télérama title, no rating shown",
+					"title", r.Title)
+			}
+			continue
 		}
+		idx[k] = r
 	}
 	return idx
 }
