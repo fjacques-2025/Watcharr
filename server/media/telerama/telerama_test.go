@@ -1,6 +1,7 @@
 package telerama
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -59,6 +60,21 @@ func TestParseList(t *testing.T) {
 	}
 }
 
+func TestPageURL(t *testing.T) {
+	for _, c := range []struct {
+		page int
+		want string
+	}{
+		{1, "https://www.telerama.fr/liste/films/3t/"},
+		{2, "https://www.telerama.fr/liste/films/3t/2/"},
+		{5, "https://www.telerama.fr/liste/films/3t/5/"},
+	} {
+		if got := pageURL("/liste/films/3t/", c.page); got != c.want {
+			t.Errorf("page %d: got %q, want %q", c.page, got, c.want)
+		}
+	}
+}
+
 // TestFetchIndexLive hits telerama.fr. Skipped unless asked for:
 //
 //	WATCHARR_LIVE_TEST=1 go test ./media/telerama/ -run Live -v
@@ -70,21 +86,29 @@ func TestFetchIndexLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchIndex: %v", err)
 	}
-	if len(reviews) < 50 {
-		t.Errorf("only %d reviews across all five buckets, expected far more "+
-			"— a bucket probably failed or the template moved", len(reviews))
+	// Each page holds 50 films. Well under the full count means pages are
+	// failing or pagination broke, even if every bucket still answers.
+	if want := 5 * pagesPerBucket * 50 * 8 / 10; len(reviews) < want {
+		t.Errorf("only %d reviews, expected at least %d from %d pages per bucket "+
+			"— pages are failing, pagination moved, or the template changed",
+			len(reviews), want, pagesPerBucket)
 	}
 
 	// Every rating bucket should contribute, and each film belongs to exactly
-	// one: a title in two buckets means the buckets aren't what we think.
+	// one: a film in two buckets means the buckets aren't what we think.
+	// A title alone doesn't identify a film — "Jane" is both Brett Morgen's
+	// 2017 documentary (4T) and Julian Jarrold's 2007 drama (1T), and two
+	// different "Kraken" came out in 2026 — so key on director and year too.
 	seen := map[int]int{}
-	titles := map[string]int{}
+	films := map[string]int{}
 	for _, r := range reviews {
 		seen[r.Rating]++
-		if prev, dup := titles[r.Title]; dup && prev != r.Rating {
-			t.Errorf("%q appears with both %d and %d Ts", r.Title, prev, r.Rating)
+		k := fmt.Sprintf("%s|%s|%d", r.Title, r.Director, r.Year)
+		if prev, dup := films[k]; dup && prev != r.Rating {
+			t.Errorf("%q (%s, %d) appears with both %d and %d Ts",
+				r.Title, r.Director, r.Year, prev, r.Rating)
 		}
-		titles[r.Title] = r.Rating
+		films[k] = r.Rating
 	}
 	for rating := 0; rating <= 4; rating++ {
 		if seen[rating] == 0 {

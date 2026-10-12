@@ -7,10 +7,15 @@
 //	https://www.telerama.fr/liste/films/4t/   -> the films rated "Bravo"
 //	                            …/3t/, /2t/, /1t/, /0t/
 //
-// Each film appears in exactly one bucket, so fetching the five listings gives
-// the rating without reading a single paywalled page. The review text stays
-// where it belongs — behind the link, which opens the Télérama app on mobile
-// for a subscriber.
+// Each film appears in exactly one bucket, so reading the first few pages of
+// each listing gives the rating without touching a single paywalled page. The
+// review text stays where it belongs — behind the link, which opens the
+// Télérama app on mobile for a subscriber.
+//
+// The listings are ordered by publication, so page one is roughly "what is in
+// cinemas now" — which is why one page per bucket was enough while this only
+// served the day's showtimes. It is not enough for a week of art-house
+// programming: see pagesPerBucket.
 //
 // This is a scraper: it breaks when the template changes, and TestParseList is
 // what tells you. Callers must cache; the index only moves on release day.
@@ -25,6 +30,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	gocache "github.com/robfig/go-cache"
@@ -68,8 +74,23 @@ var buckets = []struct {
 	{"/liste/films/0t/", 0, "Hélas"},
 }
 
+// pagesPerBucket is how deep we read each rating listing.
+//
+// Measured against one week of the two Marseille art-house programmes (40
+// distinct films): page one alone carried 21 of them, five pages carried 30,
+// and pages six to ten added none. What is still missing sits hundreds of
+// pages deep — old reviews of repertory titles that only a full crawl of some
+// 14,000 films would reach, which is not worth three films a week.
+const pagesPerBucket = 5
+
+// atOnce bounds the fetches in flight. A cold cache is 25 requests and it runs
+// while a user waits on their showtimes, so they can't be sequential; it still
+// shouldn't look like a stampede from Télérama's side.
+const atOnce = 5
+
 // The index only changes when new reviews are published, so a long TTL is both
-// safe and the polite thing to do — this is five page loads per refresh.
+// safe and the polite thing to do — this is 25 page loads per refresh, twice a
+// day.
 const cacheTTL = 12 * time.Hour
 
 var (
@@ -78,9 +99,10 @@ var (
 	yearRe     = regexp.MustCompile(`\b(19|20)\d{2}\b`)
 )
 
-// FetchIndex returns every film Télérama has recently reviewed, with its rating.
+// FetchIndex returns the films Télérama has reviewed most recently, with their
+// rating: the first pagesPerBucket pages of every rating listing.
 //
-// A bucket that fails is logged and skipped: a partial index costs us some
+// A page that fails is logged and skipped: a partial index costs us some
 // ratings, whereas failing outright would cost the caller all of them.
 func FetchIndex() ([]Review, error) {
 	cacheKey := cache.CreateCacheKey("TeleramaIndex")
@@ -90,26 +112,60 @@ func FetchIndex() ([]Review, error) {
 		return *cached, nil
 	}
 
-	var all []Review
-	for _, b := range buckets {
-		reviews, err := fetchBucket(b.Path, b.Rating, b.Label)
-		if err != nil {
-			slog.Error("telerama: skipping rating bucket",
-				"path", b.Path, "error", err)
-			continue
+	// One job per page, results collected by position so the index comes out
+	// in bucket order, best rating first. Callers rely on that order to settle
+	// a title listed twice, so the pages must not be appended as they land.
+	type job struct{ bucket, page int }
+	var jobs []job
+	for b := range buckets {
+		for page := 1; page <= pagesPerBucket; page++ {
+			jobs = append(jobs, job{b, page})
 		}
-		all = append(all, reviews...)
+	}
+	pages := make([][]Review, len(jobs))
+	sem := make(chan struct{}, atOnce)
+	var wg sync.WaitGroup
+	for i, j := range jobs {
+		wg.Add(1)
+		go func(i int, j job) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			b := buckets[j.bucket]
+			reviews, err := fetchPage(b.Path, j.page, b.Rating, b.Label)
+			if err != nil {
+				slog.Error("telerama: skipping listing page",
+					"path", b.Path, "page", j.page, "error", err)
+				return
+			}
+			pages[i] = reviews
+		}(i, j)
+	}
+	wg.Wait()
+
+	var all []Review
+	for _, p := range pages {
+		all = append(all, p...)
 	}
 	if len(all) == 0 {
 		return nil, errors.New("telerama index came back empty")
 	}
-	slog.Debug("telerama: FetchIndex built", "reviews", len(all))
+	slog.Debug("telerama: FetchIndex built", "reviews", len(all), "pages", len(jobs))
 	indexStore.Set(cacheKey, &all, cacheTTL)
 	return all, nil
 }
 
-func fetchBucket(path string, rating int, label string) ([]Review, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL+path, nil)
+// pageURL builds a listing URL. Page one is the bare path; later pages are
+// numbered beneath it: /liste/films/3t/ then /liste/films/3t/2/.
+func pageURL(path string, page int) string {
+	if page <= 1 {
+		return baseURL + path
+	}
+	return fmt.Sprintf("%s%s%d/", baseURL, path, page)
+}
+
+func fetchPage(path string, page, rating int, label string) ([]Review, error) {
+	req, err := http.NewRequest(http.MethodGet, pageURL(path, page), nil)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)
 	}
