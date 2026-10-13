@@ -472,7 +472,7 @@ func TestPeopleHTTPContract(t *testing.T) {
 	if len(credits) != 3 {
 		t.Fatalf("credits = %v", credits)
 	}
-	if k := keysOf(credits[0].(map[string]any)); k != "name,personId,role,tmdbPersonId" {
+	if k := keysOf(credits[0].(map[string]any)); k != "character,name,personId,role,tmdbPersonId" {
 		t.Errorf("credit keys = %s", k)
 	}
 	if credits[1].(map[string]any)["tmdbPersonId"] != nil {

@@ -91,20 +91,26 @@ func replaceCredits(tx *gorm.DB, userId, showId uint, cs []creditFields) error {
 		person uint
 		role   string
 	}
-	seen := map[key]bool{}
+	seen := map[key]int{}
 	rows := make([]entity.LiveCredit, 0, len(cs))
 	for _, c := range cs {
 		p, err := resolvePerson(tx, userId, c)
 		if err != nil {
 			return err
 		}
-		// Two lines naming the same artist in the same role add nothing.
+		// Two lines naming the same artist in the same role add nothing,
+		// except a character the first line left blank.
 		k := key{p.ID, c.Role}
-		if seen[k] {
+		if i, ok := seen[k]; ok {
+			if rows[i].Character == "" {
+				rows[i].Character = c.Character
+			}
 			continue
 		}
-		seen[k] = true
-		rows = append(rows, entity.LiveCredit{ShowID: showId, PersonID: p.ID, Role: c.Role, Ord: len(rows)})
+		seen[k] = len(rows)
+		rows = append(rows, entity.LiveCredit{
+			ShowID: showId, PersonID: p.ID, Role: c.Role, Character: c.Character, Ord: len(rows),
+		})
 	}
 	if len(rows) == 0 {
 		return nil
@@ -113,11 +119,12 @@ func replaceCredits(tx *gorm.DB, userId, showId uint, cs []creditFields) error {
 }
 
 type creditRow struct {
-	ShowID       uint
-	PersonID     uint
-	Role         string
-	Name         string
-	TmdbPersonID *int
+	ShowID        uint
+	PersonID      uint
+	Role          string
+	CharacterName string
+	Name          string
+	TmdbPersonID  *int
 }
 
 // creditsFor loads the credits of several shows in one query. Every given
@@ -132,7 +139,7 @@ func (s *Service) creditsFor(showIds []uint) (map[uint][]domain.LiveCredit, erro
 	}
 	var rows []creditRow
 	err := s.db.Table("live_credits AS c").
-		Select("c.show_id, c.person_id, c.role, p.name, p.tmdb_person_id").
+		Select("c.show_id, c.person_id, c.role, c.character_name, p.name, p.tmdb_person_id").
 		Joins("JOIN live_people AS p ON p.id = c.person_id AND p.deleted_at IS NULL").
 		Where("c.show_id IN ?", showIds).
 		Order("c.show_id, c.ord, c.id").
@@ -144,6 +151,7 @@ func (s *Service) creditsFor(showIds []uint) (map[uint][]domain.LiveCredit, erro
 	for _, r := range rows {
 		out[r.ShowID] = append(out[r.ShowID], domain.LiveCredit{
 			PersonID: r.PersonID, Name: r.Name, Role: r.Role, TmdbPersonID: r.TmdbPersonID,
+			Character: r.CharacterName,
 		})
 	}
 	return out, nil

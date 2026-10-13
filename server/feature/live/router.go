@@ -26,6 +26,7 @@ func (r *Router) AddRoutes() {
 	live.Use(authmiddleware.AuthRequired(r.br.Cfg))
 
 	live.POST("/prefill", r.Prefill)
+	live.GET("/tmdb-people", r.TmdbPeople)
 
 	shows := live.Group("/shows")
 	shows.GET("", r.List)
@@ -48,6 +49,8 @@ func respondError(c *gin.Context, err error) {
 	switch {
 	case errors.As(err, &verr):
 		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: verr.Msg})
+	case errors.Is(err, errTmdbUnavailable):
+		c.JSON(http.StatusBadGateway, router.ErrorResponse{Error: errTmdbUnavailable.Error()})
 	case errors.Is(err, errUnreadable):
 		c.JSON(http.StatusBadGateway, router.ErrorResponse{Error: errUnreadable.Error()})
 	case errors.Is(err, ErrNotFound):
@@ -217,4 +220,13 @@ func (r *Router) PersonByTmdb(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, domain.LivePersonByTmdb{Person: p})
+}
+
+func (r *Router) TmdbPeople(c *gin.Context) {
+	people, err := r.service.TmdbPeople(c.MustGet("userId").(uint), c.Query("q"))
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, people)
 }
