@@ -37,6 +37,7 @@ import (
 	"github.com/sbondCo/Watcharr/feature/imprt"
 	"github.com/sbondCo/Watcharr/feature/jellyfin"
 	"github.com/sbondCo/Watcharr/feature/job"
+	"github.com/sbondCo/Watcharr/feature/live"
 	"github.com/sbondCo/Watcharr/feature/plex"
 	"github.com/sbondCo/Watcharr/feature/profile"
 	"github.com/sbondCo/Watcharr/feature/search"
@@ -274,6 +275,7 @@ func main() {
 	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
 	theatresService := theatres.NewService(tmdbService, watchedService)
+	liveService := live.NewService(db)
 	importService := imprt.NewService(
 		db,
 		watchedService,
@@ -314,6 +316,7 @@ func main() {
 	search.NewRouter(br, searchService, watchedService).AddRoutes()
 	discover.NewRouter(br, discoverService, watchedService).AddRoutes()
 	theatres.NewRouter(br, theatresService).AddRoutes()
+	live.NewRouter(br, liveService).AddRoutes()
 	img.NewRouter(br).AddRoutes()
 
 	// Only add setup routes if there are no users found in db.
