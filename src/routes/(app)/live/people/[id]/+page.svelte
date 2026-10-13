@@ -12,7 +12,12 @@
 	import { errorText, getPerson, updatePerson } from "@/lib/live/api";
 	import { req } from "@/lib/util/api";
 	import { notify } from "@/lib/util/notify";
-	import type { LivePersonDetail, Media, PersonCreditsResponse } from "@/types";
+	import type {
+		LiveShow,
+		LivePersonDetail,
+		Media,
+		PersonCreditsResponse,
+	} from "@/types";
 
 	let id = $derived(Number(page.params.id));
 	let person: LivePersonDetail | undefined = $state();
@@ -32,6 +37,15 @@
 	// "On screen": the linked TMDB person's films and series.
 	let screen: Media[] | undefined = $state();
 	let screenFailed = $state(false);
+
+	/** The character this artist played in a show, "" when none given. */
+	function characterIn(show: LiveShow): string {
+		return (
+			show.credits.find(
+				(c) => c.personId === person?.id && c.role === "Performer",
+			)?.character ?? ""
+		);
+	}
 
 	async function load(forId: number) {
 		loadError = undefined;
@@ -213,7 +227,8 @@
 				{:else if linking}
 					<div class="link-search">
 						<p class="help">
-							Pick the right person: namesakes are common, check the photo.
+							Pick the right person: namesakes are common. The eye opens their
+							page in a new tab.
 						</p>
 						<ArtistSuggest
 							bind:value={linkQuery}
@@ -249,7 +264,10 @@
 					</h3>
 					<div class="list">
 						{#each r.shows as s (s.id)}
-							<LiveShowCard show={s} />
+							<LiveShowCard
+								show={s}
+								character={r.role === "Performer" ? characterIn(s) : ""}
+							/>
 						{/each}
 					</div>
 				</section>
