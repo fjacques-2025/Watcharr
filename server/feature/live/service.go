@@ -1,8 +1,9 @@
 // Package live is the user's notebook of live shows (theatre, dance...).
 //
 // Step 1: shows entered by hand. Step 2: prefill from the show's page and a
-// local copy of the poster. Step 3: credits and artists (people.go). Friends
-// and photos come later, in their own `live_` tables.
+// local copy of the poster. Step 3: credits and artists (people.go). Step 4:
+// souvenirs, i.e. rating, comment and friends (souvenir.go) and photos
+// (photos.go).
 package live
 
 import (
@@ -33,8 +34,11 @@ func NewService(db *gorm.DB, tmdb tmdbPeople) *Service {
 	return &Service{db: db, now: time.Now, fetch: newFetcher(), tmdb: tmdb}
 }
 
-// credits must be non-nil (see creditsFor).
-func (s *Service) toDto(e *entity.LiveShow, now time.Time, credits []domain.LiveCredit) domain.LiveShow {
+// The slices must be non-nil (see creditsFor), so the JSON says `[]`.
+func (s *Service) toDto(
+	e *entity.LiveShow, now time.Time,
+	credits []domain.LiveCredit, friends []domain.LiveFriend, photos []domain.LivePhoto,
+) domain.LiveShow {
 	return domain.LiveShow{
 		ID:          e.ID,
 		Title:       e.Title,
@@ -49,6 +53,10 @@ func (s *Service) toDto(e *entity.LiveShow, now time.Time, credits []domain.Live
 		PosterURL:   e.PosterURL,
 		Poster:      e.Poster,
 		Credits:     credits,
+		Rating:      e.Rating,
+		Comment:     e.Comment,
+		Friends:     friends,
+		Photos:      photos,
 	}
 }
 
@@ -130,7 +138,8 @@ func (s *Service) Create(userId uint, r domain.LiveShowRequest) (domain.LiveShow
 	return s.toDtoWithCredits(&e)
 }
 
-// Update replaces every editable field, `missed` included.
+// Update replaces every editable field, `missed` included. Souvenirs are not
+// part of it: they have their own endpoint (UpdateSouvenir).
 func (s *Service) Update(userId, id uint, r domain.LiveShowRequest) (domain.LiveShow, error) {
 	f, err := validate(r)
 	if err != nil {
@@ -168,8 +177,9 @@ func (s *Service) Update(userId, id uint, r domain.LiveShowRequest) (domain.Live
 			}
 		}
 		// Save writes zero values too, which a full replace needs (clearing
-		// the venue, un-marking missed, dropping the poster).
-		if err := tx.Omit(clause.Associations).Save(e).Error; err != nil {
+		// the venue, un-marking missed, dropping the poster). The souvenir
+		// columns are left out so a souvenir saved meanwhile is not undone.
+		if err := tx.Omit(clause.Associations, "rating", "comment").Save(e).Error; err != nil {
 			return err
 		}
 		if f.Credits != nil {

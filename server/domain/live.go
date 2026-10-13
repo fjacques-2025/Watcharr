@@ -60,6 +60,41 @@ type LiveShow struct {
 	Poster    *entity.Image `json:"poster,omitempty"`
 	// In entry order. Never null.
 	Credits []LiveCredit `json:"credits"`
+	// Out of 10, one decimal; null when not rated.
+	Rating *float64 `json:"rating"`
+	// "" when none.
+	Comment string `json:"comment"`
+	// In entry order. Never null.
+	Friends []LiveFriend `json:"friends"`
+	// Tickets first, then in upload order. Never null.
+	Photos []LivePhoto `json:"photos"`
+}
+
+type LiveFriend struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+// A friend in the suggestions, with the number of (non-deleted) shows they
+// came to.
+type LiveFriendSummary struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	ShowCount int    `json:"showCount"`
+}
+
+type LivePhoto struct {
+	ID       uint         `json:"id"`
+	Image    entity.Image `json:"image"`
+	IsTicket bool         `json:"isTicket"`
+	// "" when none.
+	Caption string `json:"caption"`
+}
+
+// Full replace of a photo's details.
+type LivePhotoUpdateRequest struct {
+	IsTicket bool   `json:"isTicket"`
+	Caption  string `json:"caption"`
 }
 
 type LiveCredit struct {
