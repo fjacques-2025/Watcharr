@@ -77,7 +77,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		"/empty":    "<html><head></head><body>nothing</body></html>",
 	})
 
-	got, err := s.Prefill(context.Background(), srv.URL+"/moved")
+	got, err := s.Prefill(context.Background(), 1, srv.URL+"/moved")
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		t.Errorf("full page:\n got %+v\nwant %+v", got, want)
 	}
 
-	got, err = s.Prefill(context.Background(), srv.URL+"/fallback")
+	got, err = s.Prefill(context.Background(), 1, srv.URL+"/fallback")
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		t.Errorf("fallback page:\n got %+v\nwant %+v", got, want)
 	}
 
-	got, err = s.Prefill(context.Background(), srv.URL+"/stop")
+	got, err = s.Prefill(context.Background(), 1, srv.URL+"/stop")
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		t.Errorf("parsing did not stop at <body>: %+v", got)
 	}
 
-	got, err = s.Prefill(context.Background(), srv.URL+"/empty")
+	got, err = s.Prefill(context.Background(), 1, srv.URL+"/empty")
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
@@ -131,21 +131,21 @@ func TestPrefillErrors(t *testing.T) {
 	srv := pageServer(t, nil)
 
 	for _, raw := range []string{"", "not a url", "ftp://example.com/", "javascript:alert(1)"} {
-		_, err := s.Prefill(context.Background(), raw)
+		_, err := s.Prefill(context.Background(), 1, raw)
 		var verr *ValidationError
 		if !errors.As(err, &verr) {
 			t.Errorf("%q: want a *ValidationError, got %v", raw, err)
 		}
 	}
 	for _, path := range []string{"/missing", "/json"} {
-		if _, err := s.Prefill(context.Background(), srv.URL+path); !errors.Is(err, errUnreadable) {
+		if _, err := s.Prefill(context.Background(), 1, srv.URL+path); !errors.Is(err, errUnreadable) {
 			t.Errorf("%s: want errUnreadable, got %v", path, err)
 		}
 	}
 	// Nothing listening.
 	dead := httptest.NewServer(http.NotFoundHandler())
 	dead.Close()
-	if _, err := s.Prefill(context.Background(), dead.URL); !errors.Is(err, errUnreadable) {
+	if _, err := s.Prefill(context.Background(), 1, dead.URL); !errors.Is(err, errUnreadable) {
 		t.Errorf("closed server: want errUnreadable, got %v", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestPrefillBlocksLocalAddresses(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hit = true }))
 	defer srv.Close()
 
-	_, err := s.Prefill(context.Background(), srv.URL)
+	_, err := s.Prefill(context.Background(), 1, srv.URL)
 	var verr *ValidationError
 	if !errors.As(err, &verr) || !strings.Contains(verr.Msg, "not allowed") {
 		t.Errorf("want a 'not allowed' ValidationError, got %v", err)

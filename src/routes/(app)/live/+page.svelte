@@ -50,6 +50,7 @@
 			<a class="btn add" href={resolve("/live/new")}>
 				<Icon i="add" wh={16} /> Add a show
 			</a>
+			<a class="btn add-several" href={resolve("/live/bulk")}>Add several</a>
 		</div>
 
 		{#if loading && !shows}
@@ -130,6 +131,13 @@
 			margin-left: auto;
 			flex: 0 0 auto;
 			white-space: nowrap;
+		}
+
+		.add-several {
+			width: auto;
+			flex: 0 0 auto;
+			white-space: nowrap;
+			font-size: 14px;
 		}
 	}
 
