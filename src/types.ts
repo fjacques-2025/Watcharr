@@ -1000,6 +1000,8 @@ export interface LivePersonSummary {
 	name: string;
 	tmdbPersonId: number | null;
 	showCount: number;
+	/** Distinct roles held in the user's shows (alphabetical; order them for display). */
+	roles: string[];
 }
 
 export interface LivePersonDetail {

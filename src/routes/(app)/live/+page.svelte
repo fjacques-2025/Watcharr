@@ -8,6 +8,7 @@
 	import Icon from "@/lib/Icon.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import LiveShowCard from "@/lib/live/LiveShowCard.svelte";
+	import { defaultRoles } from "@/lib/live/LiveCreditsEditor.svelte";
 	import { listPeople, listShows } from "@/lib/live/api";
 	import type { LivePersonSummary, LiveShow } from "@/types";
 
@@ -36,6 +37,48 @@
 	}
 
 	let people: LivePersonSummary[] | undefined = $state();
+
+	// Usual programme order (Performer, Writer, Director…), then any other
+	// role alphabetically: the same as the credits editor's chips.
+	function orderRoles(roles: string[]) {
+		const known = defaultRoles.filter((r) => roles.includes(r));
+		const other = roles.filter((r) => !defaultRoles.includes(r)).sort();
+		return [...known, ...other];
+	}
+
+	// Roles to filter on, with how many artists hold each.
+	let roleCounts = $derived.by(() => {
+		const counts: Record<string, number> = {};
+		for (const p of people ?? [])
+			for (const r of p.roles) counts[r] = (counts[r] ?? 0) + 1;
+		return orderRoles(Object.keys(counts)).map((r) => ({
+			role: r,
+			n: counts[r],
+		}));
+	});
+
+	// Like the tab, the filter lives in the URL so Back from an artist keeps it.
+	// One role at a time: "the directors I've seen" is the question it answers.
+	let roleFilter = $derived.by(() => {
+		const r = page.url.searchParams.get("role") ?? "";
+		return roleCounts.some((x) => x.role === r) ? r : "";
+	});
+
+	let shownPeople = $derived(
+		roleFilter
+			? (people ?? []).filter((p) => p.roles.includes(roleFilter))
+			: (people ?? []),
+	);
+
+	function selectRole(r: string) {
+		const next = r === roleFilter ? "" : r;
+		goto(
+			next
+				? resolve(`/live?tab=artists&role=${encodeURIComponent(next)}`)
+				: resolve("/live?tab=artists"),
+			{ replaceState: true, keepFocus: true, noScroll: true },
+		);
+	}
 	let peopleLoading = $state(false);
 	let peopleError: unknown = $state();
 
@@ -128,11 +171,42 @@
 			{:else if !people}
 				<Spinner />
 			{:else if people.length}
+				{#if roleCounts.length > 1}
+					<div class="role-filter" role="group" aria-label="Filter by role">
+						<button
+							type="button"
+							class="chip"
+							aria-pressed={!roleFilter}
+							onclick={() => selectRole("")}
+						>
+							All <span class="n">{people.length}</span>
+						</button>
+						{#each roleCounts as { role, n } (role)}
+							<button
+								type="button"
+								class="chip"
+								aria-pressed={roleFilter === role}
+								onclick={() => selectRole(role)}
+							>
+								{role} <span class="n">{n}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<ul class="people">
-					{#each people as p (p.id)}
+					{#each shownPeople as p (p.id)}
 						<li>
 							<a href={resolve(`/live/people/${p.id}`)}>
-								<span class="name">{p.name}</span>
+								<span class="who">
+									<span class="name">{p.name}</span>
+									<span class="roles">
+										{#each orderRoles(p.roles) as r (r)}
+											<span class="role" data-active={r === roleFilter}
+												>{r}</span
+											>
+										{/each}
+									</span>
+								</span>
 								<span class="count">
 									{p.showCount} show{p.showCount === 1 ? "" : "s"}
 								</span>
@@ -263,6 +337,44 @@
 		}
 	}
 
+	.role-filter {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		width: auto;
+		padding: 4px 12px;
+		border: 1px solid $text-color-accent;
+		border-radius: 14px;
+		background-color: transparent;
+		font-size: 13px;
+		color: $text-color;
+
+		.n {
+			font-size: 11px;
+			opacity: 0.7;
+		}
+
+		// Hover only tints, so on touch a stuck hover never looks pressed.
+		@media (hover: hover) {
+			&:hover {
+				background-color: $bg-color-accent;
+			}
+		}
+
+		&[aria-pressed="true"] {
+			border-color: $text-color;
+			background-color: $text-color;
+			color: $bg-color;
+		}
+	}
+
 	.people {
 		display: flex;
 		flex-flow: column;
@@ -281,11 +393,38 @@
 			padding: 12px 6px;
 			color: $text-color;
 
-			.name {
+			.who {
+				display: flex;
+				flex-flow: column;
+				gap: 4px;
 				flex: 1 1 auto;
 				min-width: 0;
+			}
+
+			.name {
 				font-weight: bold;
 				overflow-wrap: anywhere;
+			}
+
+			.roles {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px;
+			}
+
+			// Read-only labels: lighter than the filter chips above, which are
+			// the ones to press. The role being filtered on stands out.
+			.role {
+				padding: 1px 8px;
+				border: 1px solid $bg-color-accent;
+				border-radius: 10px;
+				font-size: 12px;
+				color: $text-color-accent;
+
+				&[data-active="true"] {
+					border-color: $text-color;
+					color: $text-color;
+				}
 			}
 
 			.count {

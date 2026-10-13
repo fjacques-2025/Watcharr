@@ -192,6 +192,32 @@ func (s *Service) People(userId uint, q string) ([]domain.LivePersonSummary, err
 		slog.Error("live: People failed", "user_id", userId, "error", err)
 		return nil, err
 	}
+	// Roles for the list's chips and its role filter: a second, small query
+	// rather than a GROUP_CONCAT, whose separator a role could contain.
+	var held []struct {
+		PersonID uint
+		Role     string
+	}
+	err = s.db.Table("live_credits AS c").
+		Select("DISTINCT c.person_id, c.role").
+		Joins("JOIN live_shows AS s ON s.id = c.show_id AND s.user_id = ? AND s.deleted_at IS NULL", userId).
+		Scan(&held).Error
+	if err != nil {
+		slog.Error("live: People roles failed", "user_id", userId, "error", err)
+		return nil, err
+	}
+	roles := map[uint][]string{}
+	for _, h := range held {
+		roles[h.PersonID] = append(roles[h.PersonID], h.Role)
+	}
+	for i := range rows {
+		r := roles[rows[i].ID]
+		if r == nil {
+			r = []string{}
+		}
+		sort.Strings(r)
+		rows[i].Roles = r
+	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
 		if a.ShowCount != b.ShowCount {
