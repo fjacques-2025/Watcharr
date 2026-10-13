@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -86,8 +87,10 @@ func TestPrefillEndToEnd(t *testing.T) {
 		Description: "Alceste & Célimène.",
 		Venue:       "La Criée",
 		PosterURL:   srv.URL + "/media/affiche.jpg?w=800&h=1200",
+		// Never nil, so the JSON is [] and not null.
+		Performances: []string{},
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("full page:\n got %+v\nwant %+v", got, want)
 	}
 
@@ -96,12 +99,13 @@ func TestPrefillEndToEnd(t *testing.T) {
 		t.Fatalf("Prefill: %v", err)
 	}
 	want = domain.LivePrefill{
-		URL:         srv.URL + "/fallback",
-		Title:       "Fallback title",
-		Description: "From the meta description.",
-		PosterURL:   "https://cdn.example.org/poster.png",
+		URL:          srv.URL + "/fallback",
+		Title:        "Fallback title",
+		Description:  "From the meta description.",
+		PosterURL:    "https://cdn.example.org/poster.png",
+		Performances: []string{},
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("fallback page:\n got %+v\nwant %+v", got, want)
 	}
 
@@ -117,7 +121,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
-	if got != (domain.LivePrefill{URL: srv.URL + "/empty"}) {
+	if !reflect.DeepEqual(got, domain.LivePrefill{URL: srv.URL + "/empty", Performances: []string{}}) {
 		t.Errorf("empty page: %+v", got)
 	}
 }
@@ -167,7 +171,7 @@ func TestPrefillBlocksLocalAddresses(t *testing.T) {
 
 func TestBuildPrefillTruncatesCharacters(t *testing.T) {
 	base, _ := url.Parse("https://example.com/show")
-	m := headMeta{props: map[string]string{
+	m := pageMeta{props: map[string]string{
 		"og:title":       strings.Repeat("é", maxTitle+10),
 		"og:site_name":   strings.Repeat("à", maxVenue+10),
 		"og:description": strings.Repeat("ç", maxDescription+10),
@@ -214,7 +218,14 @@ func TestResolveImage(t *testing.T) {
 
 func TestPrefillHTTPContract(t *testing.T) {
 	e := testEngine(t)
-	srv := pageServer(t, map[string]string{"/full": fullPage, "/bare": "<html><head></head></html>"})
+	srv := pageServer(t, map[string]string{
+		"/full": fullPage,
+		"/bare": "<html><head></head></html>",
+		"/dated": `<html><head></head><body><script type="application/ld+json">
+{"@type":"TheaterEvent","name":"X","startDate":"2026-11-05T20:00"}</script></body></html>`,
+		"/days": `<script type="application/ld+json">
+{"@type":"Event","name":"X","startDate":"2027-04-07","endDate":"2027-04-09"}</script>`,
+	})
 
 	w := do(e, "POST", "/api/live/prefill", `{"url":"`+srv.URL+`/bare"}`)
 	if w.Code != http.StatusOK {
@@ -227,14 +238,44 @@ func TestPrefillHTTPContract(t *testing.T) {
 	var keys []string
 	for k, v := range obj {
 		keys = append(keys, k)
-		// Never null: the client fills the form with them directly.
-		if _, ok := v.(string); !ok {
-			t.Errorf("%s = %#v, want a string", k, v)
+		switch k {
+		case "performances":
+			if a, ok := v.([]any); !ok || len(a) != 0 {
+				t.Errorf("performances = %#v, want []", v)
+			}
+		case "dateRange":
+			if v != nil {
+				t.Errorf("dateRange = %#v, want null", v)
+			}
+		default:
+			// Never null: the client fills the form with them directly.
+			if _, ok := v.(string); !ok {
+				t.Errorf("%s = %#v, want a string", k, v)
+			}
 		}
 	}
 	sort.Strings(keys)
-	if strings.Join(keys, ",") != "description,posterUrl,title,url,venue" {
+	if strings.Join(keys, ",") != "dateRange,description,performances,posterUrl,title,url,venue" {
 		t.Errorf("keys = %v", keys)
+	}
+
+	// The new fields filled in.
+	w = do(e, "POST", "/api/live/prefill", `{"url":"`+srv.URL+`/dated"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("prefill: %d %s", w.Code, w.Body)
+	}
+	var dated struct {
+		Performances []string `json:"performances"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &dated); err != nil {
+		t.Fatal(err)
+	}
+	if len(dated.Performances) != 1 || dated.Performances[0] != "2026-11-05T20:00:00+01:00" {
+		t.Errorf("performances = %v", dated.Performances)
+	}
+	w = do(e, "POST", "/api/live/prefill", `{"url":"`+srv.URL+`/days"}`)
+	if !strings.Contains(w.Body.String(), `"dateRange":{"start":"2027-04-07","end":"2027-04-09"}`) {
+		t.Errorf("dateRange: %s", w.Body)
 	}
 
 	for _, tc := range []struct {

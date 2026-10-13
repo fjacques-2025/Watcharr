@@ -17,7 +17,7 @@ func TestPrefillIgnoresNullPlaceholders(t *testing.T) {
 <meta name="twitter:image" content="null">
 <meta property="og:image" content="NULL">
 </head><body></body></html>`
-	got := buildPrefill(page, parseHead(strings.NewReader(head)))
+	got := buildPrefill(page, parsePage(strings.NewReader(head)))
 	if got.Title != "Boat People" {
 		t.Errorf("title: got %q", got.Title)
 	}
@@ -33,7 +33,7 @@ func TestPrefillIgnoresNullPlaceholders(t *testing.T) {
 
 	// A real word that merely contains "null" is kept.
 	head = `<head><meta name="description" content="Nullement fait pour plaire"></head>`
-	if got := buildPrefill(page, parseHead(strings.NewReader(head))); got.Description != "Nullement fait pour plaire" {
+	if got := buildPrefill(page, parsePage(strings.NewReader(head))); got.Description != "Nullement fait pour plaire" {
 		t.Errorf("legit text was dropped: %q", got.Description)
 	}
 }

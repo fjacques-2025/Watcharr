@@ -48,8 +48,8 @@ type LiveShow struct {
 	Poster    *entity.Image `json:"poster,omitempty"`
 }
 
-// Fields read from a show's web page, to prefill the form. Every field is a
-// string, empty when the page had nothing, and fits the validation limits.
+// Fields read from a show's web page, to prefill the form. The text fields are
+// strings, empty when the page had nothing, and fit the validation limits.
 type LivePrefill struct {
 	// After redirects.
 	URL         string `json:"url"`
@@ -58,6 +58,18 @@ type LivePrefill struct {
 	Venue       string `json:"venue"`
 	// Absolute; not downloaded until the show is saved with it.
 	PosterURL string `json:"posterUrl"`
+	// RFC3339 date-times of the performances the page lists, ascending,
+	// deduplicated, past ones included. Never null: empty when none.
+	Performances []string `json:"performances"`
+	// Set only when the page gives days without a time, so the user still
+	// has to pick the performance; nil otherwise.
+	DateRange *LiveDateRange `json:"dateRange"`
+}
+
+// Days as YYYY-MM-DD, both inclusive.
+type LiveDateRange struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
 }
 
 type LivePrefillRequest struct {
