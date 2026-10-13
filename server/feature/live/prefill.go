@@ -152,7 +152,22 @@ func buildPrefill(pageURL *url.URL, m headMeta) domain.LivePrefill {
 // cleanText unescapes entities (the tokenizer already did once; some sites
 // double-escape), and collapses whitespace.
 func cleanText(s string) string {
-	return strings.Join(strings.Fields(html.UnescapeString(s)), " ")
+	s = strings.Join(strings.Fields(html.UnescapeString(s)), " ")
+	if isPlaceholder(s) {
+		return ""
+	}
+	return s
+}
+
+// isPlaceholder spots a JavaScript empty value printed as text. La Criée's
+// pages carry <meta name="description" content="null">: taken literally it
+// would become the show's description, or a poster URL ending in "/null".
+func isPlaceholder(s string) bool {
+	switch strings.ToLower(s) {
+	case "null", "undefined", "nil", "none":
+		return true
+	}
+	return false
 }
 
 func truncateRunes(s string, max int) string {
@@ -168,7 +183,7 @@ func truncateRunes(s string, max int) string {
 func resolveImage(base *url.URL, candidates ...string) string {
 	for _, c := range candidates {
 		c = strings.TrimSpace(html.UnescapeString(c))
-		if c == "" {
+		if c == "" || isPlaceholder(c) {
 			continue
 		}
 		ref, err := url.Parse(c)
