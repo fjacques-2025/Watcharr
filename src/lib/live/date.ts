@@ -50,3 +50,38 @@ export function formatShowDate(rfc3339: string): string {
 		minute: "2-digit",
 	});
 }
+
+/** "YYYY-MM-DD" → that calendar day at local midnight; undefined if it doesn't
+ *  parse. Built from parts: `new Date("2027-04-07")` would be read as UTC. */
+function parseDay(value: string): Date | undefined {
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+	if (!m) return;
+	const [y, mo, da] = m.slice(1).map(Number);
+	const d = new Date(y, mo - 1, da);
+	if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da)
+		return;
+	return d;
+}
+
+/**
+ * A page's date range ("YYYY-MM-DD" days) → "7–9 Apr 2027"; a single day is
+ * just that date. The year only when one of the days isn't this year.
+ * Returns "" when either end doesn't parse.
+ */
+export function formatDayRange(start: string, end: string): string {
+	const a = parseDay(start);
+	const b = parseDay(end);
+	if (!a || !b) return "";
+	const [from, to] = a <= b ? [a, b] : [b, a];
+	const thisYear = new Date().getFullYear();
+	const fmt = new Intl.DateTimeFormat(undefined, {
+		day: "numeric",
+		month: "short",
+		year:
+			from.getFullYear() === thisYear && to.getFullYear() === thisYear
+				? undefined
+				: "numeric",
+	});
+	if (from.getTime() === to.getTime()) return fmt.format(from);
+	return fmt.formatRange(from, to);
+}

@@ -1,7 +1,12 @@
 <script lang="ts">
 	import type { LiveShow, LiveShowRequest } from "@/types";
 	import { errorText, prefillFromLink } from "./api";
-	import { fromLocalInput, toLocalInput } from "./date";
+	import {
+		formatDayRange,
+		formatShowDate,
+		fromLocalInput,
+		toLocalInput,
+	} from "./date";
 
 	interface Props {
 		/** The show being edited; absent when adding one. */
@@ -34,6 +39,20 @@
 	let pageLink = $state("");
 	let prefilling = $state(false);
 	let prefillError: string | undefined = $state();
+	// What the last fill read about dates: the performances to pick from, or
+	// failing that the range they run over ("" when none). Cleared as soon as
+	// the link changes, so they never describe another page.
+	let performances: string[] = $state([]);
+	let rangeHint = $state("");
+	// Split once per fill, both halves kept chronological: upcoming first, as
+	// that's what is usually booked, then the past ones.
+	let upcoming = $derived(performances.filter((p) => !isPast(p)));
+	let past = $derived(performances.filter((p) => isPast(p)));
+	// The picker shows the performance the date field currently holds, if any;
+	// a hand-typed date that matches none leaves it on its prompt.
+	let pickedPerformance = $derived(
+		(date && performances.find((p) => toLocalInput(p) === date)) || "",
+	);
 
 	// The preview hides itself once its address has failed to load; keyed by
 	// address so editing the field gives the new one a chance.
@@ -52,6 +71,22 @@
 		} catch {
 			return false;
 		}
+	}
+
+	// Hoisted, so the $derived above may call it.
+	function isPast(rfc3339: string) {
+		return new Date(rfc3339).getTime() < Date.now();
+	}
+
+	function clearDateChoices() {
+		performances = [];
+		rangeHint = "";
+	}
+
+	function pickPerformance(ev: Event) {
+		const value = (ev.currentTarget as HTMLSelectElement).value;
+		// An explicit choice, so it replaces whatever the field held.
+		if (value) date = toLocalInput(value);
 	}
 
 	// Mirrors the server's obvious rules, so a typo is caught before a round
@@ -74,15 +109,25 @@
 		}
 		prefilling = true;
 		prefillError = undefined;
+		clearDateChoices();
 		try {
 			const r = await prefillFromLink(link);
 			// Only empty fields: what the user typed wins over what was read.
-			// The date stays theirs to enter, pages often list many.
 			if (!title.trim() && r.title) title = r.title;
 			if (!description.trim() && r.description) description = r.description;
 			if (!venue.trim() && r.venue) venue = r.venue;
 			if (!url.trim()) url = r.url || link;
 			if (!posterUrl.trim() && r.posterUrl) posterUrl = r.posterUrl;
+			// Pages often list many performances: offer them, the user picks
+			// theirs. Only a lone one is taken as the date, and only into an
+			// empty field. A range has no time, so it's just a hint.
+			const perfs = (r.performances ?? []).filter(
+				(p) => toLocalInput(p) !== "",
+			);
+			performances = perfs;
+			if (perfs.length === 1 && !date) date = toLocalInput(perfs[0]);
+			if (!perfs.length && r.dateRange)
+				rangeHint = formatDayRange(r.dateRange.start, r.dateRange.end);
 		} catch (err) {
 			console.error("LiveShowForm: prefill failed", err);
 			prefillError = errorText(err);
@@ -129,6 +174,7 @@
 				id="live-prefill-link"
 				type="url"
 				bind:value={pageLink}
+				oninput={clearDateChoices}
 				onkeydown={prefillOnEnter}
 				placeholder="https://"
 				inputmode="url"
@@ -161,10 +207,45 @@
 		<span>Title</span>
 		<input type="text" bind:value={title} maxlength={300} required />
 	</label>
-	<label>
-		<span>Date and time</span>
-		<input type="datetime-local" bind:value={date} required />
-	</label>
+	<div class="date-field">
+		<label>
+			<span>Date and time</span>
+			<input type="datetime-local" bind:value={date} required />
+		</label>
+		{#if performances.length}
+			<label class="performance">
+				<span>Choose your performance</span>
+				<select value={pickedPerformance} onchange={pickPerformance}>
+					<option value="" disabled>
+						{performances.length} performance{performances.length > 1
+							? "s"
+							: ""} on the page
+					</option>
+					{#if upcoming.length && past.length}
+						<optgroup label="Upcoming">
+							{#each upcoming as p (p)}
+								<option value={p}>{formatShowDate(p)}</option>
+							{/each}
+						</optgroup>
+						<optgroup label="Past">
+							{#each past as p (p)}
+								<option value={p}>{formatShowDate(p)} (past)</option>
+							{/each}
+						</optgroup>
+					{:else}
+						{#each performances as p (p)}
+							<option value={p}
+								>{formatShowDate(p)}{isPast(p) ? " (past)" : ""}</option
+							>
+						{/each}
+					{/if}
+				</select>
+			</label>
+			<p class="help">Or type any other date above.</p>
+		{:else if rangeHint}
+			<p class="help">Performances: {rangeHint}</p>
+		{/if}
+	</div>
 	<label>
 		<span>Venue</span>
 		<input type="text" bind:value={venue} maxlength={200} />
@@ -226,7 +307,8 @@
 	// Global inputs are black-bordered on any theme; follow the textarea's
 	// lead so they stay visible in dark mode.
 	.prefill input,
-	.live-form input {
+	.live-form input,
+	.live-form select {
 		color: $text-color;
 		background-color: transparent;
 		border-color: $text-color;
@@ -319,6 +401,32 @@
 		textarea {
 			resize: vertical;
 			font: inherit;
+		}
+
+		.date-field {
+			display: flex;
+			flex-flow: column;
+			gap: 5px;
+
+			.performance {
+				margin-top: 4px;
+
+				span {
+					font-size: 13px;
+				}
+			}
+
+			// No global select style: match the inputs around it.
+			select {
+				width: 100%;
+				padding: 7px 10px;
+				border: 2px solid;
+				border-radius: 5px;
+				font: inherit;
+				:global(:root.theme-dark) & {
+					color-scheme: dark;
+				}
+			}
 		}
 
 		.poster-field {
