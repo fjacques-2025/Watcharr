@@ -21,8 +21,10 @@ func TestShowState(t *testing.T) {
 		{"exactly now", false, now, domain.LiveShowSeen},
 		{"past", false, now.Add(-time.Hour), domain.LiveShowSeen},
 		{"missed in the past", true, now.Add(-time.Hour), domain.LiveShowMissed},
-		// Missed wins even before the date (a cancellation announced early).
-		{"missed in the future", true, now.Add(time.Hour), domain.LiveShowMissed},
+		// Not having gone means nothing before the date: still upcoming.
+		{"missed in the future", true, now.Add(time.Hour), domain.LiveShowUpcoming},
+		{"missed one nanosecond ahead", true, now.Add(time.Nanosecond), domain.LiveShowUpcoming},
+		{"missed exactly now", true, now, domain.LiveShowMissed},
 		// Same instant in another offset is still the same instant.
 		{"exactly now, other offset", false,
 			now.In(time.FixedZone("CEST", 2*3600)), domain.LiveShowSeen},
