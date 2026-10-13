@@ -275,7 +275,7 @@ func main() {
 	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
 	theatresService := theatres.NewService(tmdbService, watchedService)
-	liveService := live.NewService(db)
+	liveService := live.NewService(db, tmdbService)
 	importService := imprt.NewService(
 		db,
 		watchedService,

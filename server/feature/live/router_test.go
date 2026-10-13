@@ -16,11 +16,16 @@ import (
 // frontend relies on, not about auth.
 func testEngine(t *testing.T) *gin.Engine {
 	t.Helper()
+	return testEngineWith(newTestService(t))
+}
+
+func testEngineWith(s *Service) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	r := &Router{service: newTestService(t)}
+	r := &Router{service: s}
 	e := gin.New()
 	live := e.Group("/api/live", func(c *gin.Context) { c.Set("userId", uint(1)) })
 	live.POST("/prefill", r.Prefill)
+	live.GET("/tmdb-people", r.TmdbPeople)
 	g := live.Group("/shows")
 	g.GET("", r.List)
 	g.GET("/:id", r.Get)

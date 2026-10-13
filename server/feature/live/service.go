@@ -26,10 +26,11 @@ type Service struct {
 	now func() time.Time
 	// The only way out to the internet for this feature (pages, posters).
 	fetch *fetcher
+	tmdb  tmdbPeople
 }
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db, now: time.Now, fetch: newFetcher()}
+func NewService(db *gorm.DB, tmdb tmdbPeople) *Service {
+	return &Service{db: db, now: time.Now, fetch: newFetcher(), tmdb: tmdb}
 }
 
 // credits must be non-nil (see creditsFor).

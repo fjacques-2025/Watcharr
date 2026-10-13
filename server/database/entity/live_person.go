@@ -28,6 +28,8 @@ type LiveCredit struct {
 	ShowID   uint   `gorm:"not null;index"`
 	PersonID uint   `gorm:"not null;index"`
 	Role     string `gorm:"not null"`
+	// Part played, "" when none. Column renamed: CHARACTER is an SQL type.
+	Character string `gorm:"column:character_name;not null;default:''"`
 	// Position in the show's credits, as entered.
 	Ord int `gorm:"not null"`
 }
