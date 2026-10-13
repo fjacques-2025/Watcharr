@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { resolve } from "$app/paths";
-	import type { LiveShow } from "@/types";
+	import Icon from "@/lib/Icon.svelte";
+	import { toShowableRating, toWhichThumb } from "@/lib/rating/helpers";
+	import { store } from "@/store.svelte";
+	import { RatingSystem, type LiveShow } from "@/types";
 	import LivePoster from "./LivePoster.svelte";
 	import { formatShowDate } from "./date";
 
@@ -11,6 +14,14 @@
 	}
 
 	let { show, character = "" }: Props = $props();
+
+	// The user's own score, in their rating system (like the posters do).
+	let rated = $derived(show.state === "seen" && !!show.rating);
+	let thumb = $derived(
+		store.userSettings?.ratingSystem === RatingSystem.Thumbs
+			? toWhichThumb(show.rating ?? undefined)
+			: undefined,
+	);
 </script>
 
 <a class="live-card" href={resolve(`/live/${show.id}`)} data-state={show.state}>
@@ -19,10 +30,33 @@
 		<span class="date">{formatShowDate(show.date)}</span>
 		<span class="title">{show.title}</span>
 		{#if character}<span class="character">as {character}</span>{/if}
-		{#if show.venue || show.state === "missed"}
+		{#if show.venue || show.state === "missed" || rated}
 			<span class="meta">
 				{#if show.venue}<span class="venue">{show.venue}</span>{/if}
 				{#if show.state === "missed"}<span class="missed">Didn't go</span>{/if}
+				{#if rated}
+					<span class="rating" title="My rating">
+						{#if store.userSettings?.ratingSystem === RatingSystem.Thumbs}
+							{#if thumb === -1}
+								<Icon i="thumb-down" wh={14} />
+							{:else if thumb === 1}
+								<Icon i="thumb-up" wh={14} />
+							{:else}
+								<span aria-hidden="true">–</span>
+							{/if}
+							<span class="sr-only"
+								>{thumb === -1
+									? "Disliked"
+									: thumb === 1
+										? "Liked"
+										: "Mediocre"}</span
+							>
+						{:else}
+							<Icon i="star" wh={13} />
+							{toShowableRating(show.rating ?? undefined)}
+						{/if}
+					</span>
+				{/if}
 			</span>
 		{/if}
 	</span>
@@ -88,6 +122,25 @@
 			padding: 1px 7px;
 			border: 1px solid $bg-color-accent;
 			border-radius: 10px;
+		}
+
+		.rating {
+			display: inline-flex;
+			align-items: center;
+			gap: 3px;
+			font-size: 13px;
+			fill: currentColor;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.sr-only {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0 0 0 0);
+			white-space: nowrap;
 		}
 
 		&[data-state="missed"] {
