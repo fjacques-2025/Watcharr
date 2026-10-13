@@ -6,18 +6,30 @@
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
+	import MyThoughts from "@/lib/content/MyThoughts.svelte";
+	import LiveFriends from "@/lib/live/LiveFriends.svelte";
+	import LivePhotos from "@/lib/live/LivePhotos.svelte";
 	import LivePoster from "@/lib/live/LivePoster.svelte";
 	import LiveShowForm from "@/lib/live/LiveShowForm.svelte";
 	import {
 		deleteShow,
 		errorText,
 		getShow,
+		sortPhotos,
 		toRequest,
 		updateShow,
+		updateSouvenir,
 	} from "@/lib/live/api";
 	import { formatShowDate } from "@/lib/live/date";
+	import Rating from "@/lib/rating/Rating.svelte";
 	import { notify } from "@/lib/util/notify";
-	import type { LiveShow, LiveShowRequest, LiveShowState } from "@/types";
+	import type {
+		LivePhoto,
+		LiveShow,
+		LiveShowRequest,
+		LiveShowState,
+		LiveSouvenirRequest,
+	} from "@/types";
 
 	const stateLabels: Record<LiveShowState, string> = {
 		upcoming: "Upcoming",
@@ -130,6 +142,47 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	/** Saves rating, notes or friends (only the keys given). Resolves false
+	 *  when it failed, after saying so. */
+	async function saveSouvenir(body: LiveSouvenirRequest): Promise<boolean> {
+		if (!show) return false;
+		const forId = show.id;
+		try {
+			const s = await updateSouvenir(forId, body);
+			// Only the souvenir fields: photos are kept up to date here as
+			// they upload, and a reply sent before one finished would drop it.
+			if (show?.id === forId) {
+				show.rating = s.rating;
+				show.comment = s.comment;
+				show.friends = s.friends;
+				show.updatedAt = s.updatedAt;
+			}
+			return true;
+		} catch (err) {
+			console.error("live: souvenir save failed", err);
+			notify({ type: "error", text: `Failed to save: ${errorText(err)}` });
+			return false;
+		}
+	}
+
+	function setRating(r: number) {
+		// 0 clears it.
+		saveSouvenir({ rating: r > 0 ? r : null });
+	}
+
+	function photoAdded(p: LivePhoto) {
+		if (show) show.photos = sortPhotos([...show.photos, p]);
+	}
+
+	function photoUpdated(p: LivePhoto) {
+		if (show)
+			show.photos = sortPhotos(show.photos.map((x) => (x.id === p.id ? p : x)));
+	}
+
+	function photoDeleted(photoId: number) {
+		if (show) show.photos = show.photos.filter((x) => x.id !== photoId);
 	}
 
 	async function remove() {
@@ -259,6 +312,48 @@
 					</button>
 				{/if}
 			</div>
+
+			<section class="souvenir" aria-labelledby="live-with">
+				<h3 id="live-with">With</h3>
+				<LiveFriends
+					friends={show.friends ?? []}
+					onSave={(names) => saveSouvenir({ friends: names })}
+				/>
+			</section>
+
+			<!-- Rating and notes once the date has passed; friends and photos
+			  (the ticket!) are known long before. -->
+			{#if show.state !== "upcoming"}
+				<section class="souvenir" aria-labelledby="live-rating">
+					<h3 id="live-rating">My rating</h3>
+					<Rating rating={show.rating ?? undefined} onChange={setRating} />
+					{#if show.rating}
+						<button class="plain clear" onclick={() => setRating(0)}>
+							Clear rating
+						</button>
+					{/if}
+				</section>
+
+				<section class="souvenir" aria-labelledby="live-notes">
+					<h3 id="live-notes">My notes</h3>
+					<MyThoughts
+						contentTitle={show.title}
+						thoughts={show.comment ?? ""}
+						onChange={(comment) => saveSouvenir({ comment })}
+					/>
+				</section>
+			{/if}
+
+			<section class="souvenir" aria-labelledby="live-photos">
+				<h3 id="live-photos">Photos</h3>
+				<LivePhotos
+					showId={show.id}
+					photos={show.photos ?? []}
+					onAdded={photoAdded}
+					onUpdated={photoUpdated}
+					onDeleted={photoDeleted}
+				/>
+			</section>
 		{/if}
 	</div>
 </div>
@@ -378,6 +473,29 @@
 		// Keep the paragraphs the description was typed with.
 		white-space: pre-line;
 		overflow-wrap: anywhere;
+	}
+
+	.souvenir {
+		margin-top: 28px;
+
+		h3 {
+			margin-bottom: 10px;
+		}
+
+		.clear {
+			margin-top: 6px;
+			padding: 4px 0;
+			font-size: 14px;
+			color: $text-color-accent;
+			text-decoration: underline;
+			text-underline-offset: 3px;
+
+			@media (hover: hover) {
+				&:hover {
+					color: $text-color;
+				}
+			}
+		}
 	}
 
 	.actions {

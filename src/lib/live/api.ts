@@ -1,11 +1,14 @@
 import { req } from "@/lib/util/api";
 import { ReqerError } from "@/lib/util/fetch";
 import type {
+	LiveFriendSummary,
 	LivePersonDetail,
+	LivePhoto,
 	LivePersonSummary,
 	LiveShow,
 	LiveShowPrefill,
 	LiveShowRequest,
+	LiveSouvenirRequest,
 	TmdbPersonCandidate,
 } from "@/types";
 
@@ -24,6 +27,53 @@ export const deleteShow = (id: number) => req.delete(`/live/shows/${id}`);
 /** Reads a show's page on the server; what it can't find comes back "". */
 export const prefillFromLink = (url: string) =>
 	req.post<LiveShowPrefill>("/live/prefill", { url });
+
+/** Rating, notes and friends: send only the keys being changed. */
+export const updateSouvenir = async (id: number, body: LiveSouvenirRequest) =>
+	(
+		await req.do<LiveShow>(`/live/shows/${id}/souvenir`, {
+			method: "PATCH",
+			body,
+		})
+	).body;
+
+/** Friends already met at shows; with `q`, those whose name contains it
+ *  (accents and case ignored), at most 20. */
+export const listFriends = (q?: string, signal?: AbortSignal) =>
+	req.get<LiveFriendSummary[]>("/live/friends", {
+		params: q ? { q } : undefined,
+		signal,
+	});
+
+/** Uploads an already resized JPEG (see `resizeImage`). */
+export function uploadPhoto(
+	showId: number,
+	photo: Blob,
+	isTicket: boolean,
+	caption = "",
+) {
+	const fd = new FormData();
+	fd.append("photo", photo, "photo.jpg");
+	fd.append("isTicket", isTicket ? "true" : "false");
+	if (caption) fd.append("caption", caption);
+	return req.post<LivePhoto>(`/live/shows/${showId}/photos`, fd);
+}
+
+export const updatePhoto = (
+	showId: number,
+	photoId: number,
+	body: { isTicket: boolean; caption: string },
+) => req.put<LivePhoto>(`/live/shows/${showId}/photos/${photoId}`, body);
+
+export const deletePhoto = (showId: number, photoId: number) =>
+	req.delete(`/live/shows/${showId}/photos/${photoId}`);
+
+/** The server's order: tickets first, then in the order they were added. */
+export function sortPhotos(photos: LivePhoto[]): LivePhoto[] {
+	return [...photos].sort(
+		(a, b) => Number(b.isTicket) - Number(a.isTicket) || a.id - b.id,
+	);
+}
 
 /** The notebook's artists, most credited first; with `q`, those whose name
  *  contains it (accents and case ignored), at most 20. */

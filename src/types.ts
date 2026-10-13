@@ -988,8 +988,39 @@ export interface LiveShow {
 	poster?: LiveShowPoster;
 	/** Who was in it and in what capacity, in the order they were entered. */
 	credits: LiveCredit[];
+	/** Out of 10, one decimal; null when not rated. */
+	rating: number | null;
+	/** The user's notes; "" when none. */
+	comment: string;
+	/** Who came along, in the order entered. */
+	friends: { id: number; name: string }[];
+	/** Tickets first, then in order. */
+	photos: LivePhoto[];
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface LivePhoto {
+	id: number;
+	image: { path: string; blurHash: string; createdAt: string };
+	isTicket: boolean;
+	caption: string;
+}
+
+export interface LiveFriendSummary {
+	id: number;
+	name: string;
+	showCount: number;
+}
+
+/** PATCH: only the keys present are applied. */
+export interface LiveSouvenirRequest {
+	/** Out of 10; null or 0 clears it. */
+	rating?: number | null;
+	/** At most 10000 characters. */
+	comment?: string;
+	/** The full list of names, in order (at most 30). */
+	friends?: string[];
 }
 
 /** One person + role on a show. People are matched by name in the notebook;
