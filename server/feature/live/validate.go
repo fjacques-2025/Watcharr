@@ -16,6 +16,7 @@ const (
 	maxDescription = 5000
 	maxPersonName  = 200
 	maxRole        = 100
+	maxCharacter   = 200
 	maxCredits     = 100
 )
 
@@ -44,9 +45,10 @@ type showFields struct {
 }
 
 type creditFields struct {
-	Name   string
-	Role   string
-	TmdbID *int
+	Name      string
+	Role      string
+	TmdbID    *int
+	Character string
 }
 
 // validate trims and checks a request. Lengths count characters, not bytes:
@@ -119,7 +121,11 @@ func validateCredits(in []domain.LiveCreditRequest) ([]creditFields, error) {
 		if err := validTmdbID(c.TmdbPersonID); err != nil {
 			return nil, invalid("credits[%d]: %s", i, err.Error())
 		}
-		out = append(out, creditFields{Name: name, Role: role, TmdbID: c.TmdbPersonID})
+		character := collapseSpaces(c.Character)
+		if utf8.RuneCountInString(character) > maxCharacter {
+			return nil, invalid("credits[%d]: character must be at most %d characters", i, maxCharacter)
+		}
+		out = append(out, creditFields{Name: name, Role: role, TmdbID: c.TmdbPersonID, Character: character})
 	}
 	return out, nil
 }

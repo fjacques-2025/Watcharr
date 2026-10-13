@@ -40,6 +40,8 @@ type LiveCreditRequest struct {
 	Role string `json:"role"`
 	// Set when the user picked a TMDB person; links the artist to it.
 	TmdbPersonID *int `json:"tmdbPersonId"`
+	// Optional part played; the UI offers it for performers only.
+	Character string `json:"character"`
 }
 
 type LiveShow struct {
@@ -65,6 +67,8 @@ type LiveCredit struct {
 	Name         string `json:"name"`
 	Role         string `json:"role"`
 	TmdbPersonID *int   `json:"tmdbPersonId"`
+	// "" when none.
+	Character string `json:"character"`
 }
 
 type LivePerson struct {
@@ -136,4 +140,24 @@ type LiveDateRange struct {
 
 type LivePrefillRequest struct {
 	URL string `json:"url"`
+}
+
+// A TMDB person the user may link an artist to.
+type LiveTmdbPerson struct {
+	TmdbID int    `json:"tmdbId"`
+	Name   string `json:"name"`
+	// "" when none.
+	ProfilePath string `json:"profilePath"`
+	// TMDB known_for_department; "" when none.
+	Department string `json:"department"`
+	// At most 3, in TMDB's order. Never null.
+	KnownFor []LiveTmdbKnownFor `json:"knownFor"`
+	// Their movies and series in this user's list.
+	InYourList int `json:"inYourList"`
+}
+
+type LiveTmdbKnownFor struct {
+	Title     string `json:"title"`
+	Year      *int   `json:"year"`
+	MediaType string `json:"mediaType"`
 }

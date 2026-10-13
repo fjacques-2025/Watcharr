@@ -21,7 +21,7 @@ var testNow = time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	testutil.SetupLogging()
-	s := NewService(testutil.SetupDB(t))
+	s := NewService(testutil.SetupDB(t), &fakeTmdb{})
 	s.now = func() time.Time { return testNow }
 	s.fetch = buildFetcher(true, true)
 	prev := config.DataPath
