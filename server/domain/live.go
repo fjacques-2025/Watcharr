@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/sbondCo/Watcharr/database/entity"
+)
 
 // State of a live show. Computed from the date on every read, never stored, so
 // a booked show becomes "seen" on its own once the performance has passed.
@@ -23,6 +27,9 @@ type LiveShowRequest struct {
 	Date string `json:"date"`
 	// Ignored on create: a new show cannot already have been missed.
 	Missed bool `json:"missed"`
+	// Where to download the poster from. Empty: no poster. Same as the stored
+	// one: kept without downloading again.
+	PosterURL string `json:"posterUrl"`
 }
 
 type LiveShow struct {
@@ -36,4 +43,23 @@ type LiveShow struct {
 	State       LiveShowState `json:"state"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
+	// Source the poster was copied from; the copy itself is Poster.
+	PosterURL string        `json:"posterUrl"`
+	Poster    *entity.Image `json:"poster,omitempty"`
+}
+
+// Fields read from a show's web page, to prefill the form. Every field is a
+// string, empty when the page had nothing, and fits the validation limits.
+type LivePrefill struct {
+	// After redirects.
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Venue       string `json:"venue"`
+	// Absolute; not downloaded until the show is saved with it.
+	PosterURL string `json:"posterUrl"`
+}
+
+type LivePrefillRequest struct {
+	URL string `json:"url"`
 }

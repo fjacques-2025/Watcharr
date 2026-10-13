@@ -35,6 +35,7 @@ type showFields struct {
 	Description string
 	Date        time.Time
 	Missed      bool
+	PosterURL   string
 }
 
 // validate trims and checks a request. Lengths count characters, not bytes:
@@ -46,6 +47,7 @@ func validate(r domain.LiveShowRequest) (showFields, error) {
 		URL:         strings.TrimSpace(r.URL),
 		Description: strings.TrimSpace(r.Description),
 		Missed:      r.Missed,
+		PosterURL:   strings.TrimSpace(r.PosterURL),
 	}
 	if f.Title == "" {
 		return f, invalid("title is required")
@@ -59,11 +61,13 @@ func validate(r domain.LiveShowRequest) (showFields, error) {
 	if utf8.RuneCountInString(f.Description) > maxDescription {
 		return f, invalid("description must be at most %d characters", maxDescription)
 	}
-	if f.URL != "" {
-		u, err := url.Parse(f.URL)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return f, invalid("url must be an absolute http or https link")
-		}
+	if f.URL != "" && !isAbsoluteHTTP(f.URL) {
+		return f, invalid("url must be an absolute http or https link")
+	}
+	// Only the shape here: whether we may and can download it is decided
+	// when fetching.
+	if f.PosterURL != "" && !isAbsoluteHTTP(f.PosterURL) {
+		return f, invalid("posterUrl must be an absolute http or https link")
 	}
 	date := strings.TrimSpace(r.Date)
 	if date == "" {
@@ -75,4 +79,9 @@ func validate(r domain.LiveShowRequest) (showFields, error) {
 	}
 	f.Date = d.UTC()
 	return f, nil
+}
+
+func isAbsoluteHTTP(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
