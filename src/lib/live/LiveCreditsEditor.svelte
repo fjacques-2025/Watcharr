@@ -59,8 +59,16 @@
 		"Music",
 		"Translation",
 	];
+	// A <select>, not a text field with a <datalist>: the browser filters a
+	// datalist by what the field already holds, and the role is pre-filled
+	// ("Performer", or the line above's), so only that one was ever offered.
+	const OTHER = "__other";
 	const uid = $props.id();
-	const rolesListId = `${uid}-roles`;
+	// Rows the user switched to "Other…": they keep the free text field even
+	// while it's empty or happens to match a default role.
+	let otherMode: Record<number, boolean> = $state({});
+
+	const roleInputId = (key: number) => `${uid}-role-${key}`;
 
 	const nameInputId = (key: number) => `${uid}-name-${key}`;
 
@@ -71,6 +79,25 @@
 		rows.push(row);
 		await tick();
 		document.getElementById(nameInputId(row.key))?.focus();
+	}
+
+	function roleChoice(row: CreditRow) {
+		if (otherMode[row.key]) return OTHER;
+		if (!row.role) return "";
+		return defaultRoles.includes(row.role) ? row.role : OTHER;
+	}
+
+	async function chooseRole(row: CreditRow, value: string) {
+		if (value !== OTHER) {
+			otherMode[row.key] = false;
+			row.role = value;
+			return;
+		}
+		otherMode[row.key] = true;
+		// A default role left in the field would read as already chosen.
+		if (defaultRoles.includes(row.role)) row.role = "";
+		await tick();
+		document.getElementById(roleInputId(row.key))?.focus();
 	}
 
 	function remove(i: number) {
@@ -87,26 +114,35 @@
 
 <fieldset class="credits-editor">
 	<legend>Artists</legend>
-	<datalist id={rolesListId}>
-		{#each defaultRoles as r (r)}
-			<option value={r}></option>
-		{/each}
-	</datalist>
 
 	{#if rows.length}
 		<ol>
 			{#each rows as row, i (row.key)}
 				<li>
-					<input
-						class="role"
-						type="text"
-						bind:value={row.role}
-						list={rolesListId}
-						placeholder="Role"
-						aria-label="Role"
-						autocomplete="off"
-						maxlength={100}
-					/>
+					<div class="role">
+						<select
+							aria-label="Role"
+							value={roleChoice(row)}
+							onchange={(e) => chooseRole(row, e.currentTarget.value)}
+						>
+							<option value="" disabled>Role</option>
+							{#each defaultRoles as r (r)}
+								<option value={r}>{r}</option>
+							{/each}
+							<option value={OTHER}>Other…</option>
+						</select>
+						{#if roleChoice(row) === OTHER}
+							<input
+								id={roleInputId(row.key)}
+								type="text"
+								bind:value={row.role}
+								placeholder="Role"
+								aria-label="Other role"
+								autocomplete="off"
+								maxlength={100}
+							/>
+						{/if}
+					</div>
 					<div class="name">
 						<ArtistSuggest
 							id={nameInputId(row.key)}
@@ -235,9 +271,30 @@
 	}
 
 	.role {
-		color: $text-color;
-		background-color: transparent;
-		border-color: $text-color;
+		display: flex;
+		flex-flow: column;
+		gap: 4px;
+		min-width: 0;
+
+		select,
+		input {
+			width: 100%;
+			color: $text-color;
+			background-color: transparent;
+			border-color: $text-color;
+		}
+
+		// No global select style: match the inputs around it.
+		select {
+			padding: 7px 10px;
+			border: 2px solid $text-color;
+			border-radius: 5px;
+			font: inherit;
+
+			:global(:root.theme-dark) & {
+				color-scheme: dark;
+			}
+		}
 	}
 
 	.name {
