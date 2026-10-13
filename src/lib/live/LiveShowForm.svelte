@@ -247,7 +247,7 @@
 		{/if}
 	</div>
 	<label>
-		<span>Venue</span>
+		<span>Theatre</span>
 		<input type="text" bind:value={venue} maxlength={200} />
 	</label>
 	<label>
