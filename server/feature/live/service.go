@@ -1,7 +1,8 @@
 // Package live is the user's notebook of live shows (theatre, dance...).
 //
-// Step 1 of the feature: shows only, entered by hand. Links, credits, friends
-// and photos come later, in their own `live_` tables.
+// Step 1: shows entered by hand. Step 2: prefill from the show's page and a
+// local copy of the poster. Credits, friends and photos come later, in their
+// own `live_` tables.
 package live
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ErrNotFound covers both a missing show and another user's show: telling
@@ -22,10 +24,12 @@ type Service struct {
 	db *gorm.DB
 	// Clock for the computed state, swappable in tests.
 	now func() time.Time
+	// The only way out to the internet for this feature (pages, posters).
+	fetch *fetcher
 }
 
 func NewService(db *gorm.DB) *Service {
-	return &Service{db: db, now: time.Now}
+	return &Service{db: db, now: time.Now, fetch: newFetcher()}
 }
 
 func (s *Service) toDto(e *entity.LiveShow, now time.Time) domain.LiveShow {
@@ -40,6 +44,8 @@ func (s *Service) toDto(e *entity.LiveShow, now time.Time) domain.LiveShow {
 		State:       ShowState(e.Missed, e.Date, now),
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
+		PosterURL:   e.PosterURL,
+		Poster:      e.Poster,
 	}
 }
 
@@ -47,7 +53,7 @@ func (s *Service) toDto(e *entity.LiveShow, now time.Time) domain.LiveShow {
 func (s *Service) List(userId uint) ([]domain.LiveShow, error) {
 	var rows []entity.LiveShow
 	// id breaks ties so two shows at the same time keep a stable order.
-	if res := s.db.Where("user_id = ?", userId).
+	if res := s.db.Preload("Poster").Where("user_id = ?", userId).
 		Order("date ASC, id ASC").
 		Find(&rows); res.Error != nil {
 		slog.Error("live: List failed", "user_id", userId, "error", res.Error)
@@ -63,7 +69,7 @@ func (s *Service) List(userId uint) ([]domain.LiveShow, error) {
 
 func (s *Service) find(userId, id uint) (*entity.LiveShow, error) {
 	var e entity.LiveShow
-	res := s.db.Where("id = ? AND user_id = ?", id, userId).Take(&e)
+	res := s.db.Preload("Poster").Where("id = ? AND user_id = ?", id, userId).Take(&e)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
@@ -87,6 +93,12 @@ func (s *Service) Create(userId uint, r domain.LiveShowRequest) (domain.LiveShow
 	if err != nil {
 		return domain.LiveShow{}, err
 	}
+	var poster []byte
+	if f.PosterURL != "" {
+		if poster, err = s.downloadPoster(f.PosterURL); err != nil {
+			return domain.LiveShow{}, err
+		}
+	}
 	e := entity.LiveShow{
 		UserID:      userId,
 		Title:       f.Title,
@@ -94,10 +106,22 @@ func (s *Service) Create(userId uint, r domain.LiveShowRequest) (domain.LiveShow
 		URL:         f.URL,
 		Description: f.Description,
 		Date:        f.Date,
+		PosterURL:   f.PosterURL,
 	}
-	if res := s.db.Create(&e); res.Error != nil {
-		slog.Error("live: Create failed", "user_id", userId, "error", res.Error)
-		return domain.LiveShow{}, res.Error
+	// One transaction: a poster the saver rejects must not leave a show
+	// behind, nor a show fail after its image row was added.
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if poster != nil {
+			if err := attachPoster(tx, &e, poster); err != nil {
+				return err
+			}
+		}
+		// The image row is written by the saver; GORM must not upsert it.
+		return tx.Omit(clause.Associations).Create(&e).Error
+	})
+	if err != nil {
+		slog.Error("live: Create failed", "user_id", userId, "error", err)
+		return domain.LiveShow{}, err
 	}
 	return s.toDto(&e, s.now()), nil
 }
@@ -118,11 +142,34 @@ func (s *Service) Update(userId, id uint, r domain.LiveShowRequest) (domain.Live
 	e.Description = f.Description
 	e.Date = f.Date
 	e.Missed = f.Missed
-	// Save writes zero values too, which a full replace needs (clearing the
-	// venue, un-marking missed).
-	if res := s.db.Save(e); res.Error != nil {
-		slog.Error("live: Update failed", "user_id", userId, "id", id, "error", res.Error)
-		return domain.LiveShow{}, res.Error
+
+	// Same source as stored: keep the copy we have. The image is never
+	// deleted here, other rows may share it (the saver dedups by hash).
+	var poster []byte
+	switch {
+	case f.PosterURL == "":
+		e.PosterID, e.Poster = nil, nil
+	case f.PosterURL == e.PosterURL && e.PosterID != nil:
+	default:
+		if poster, err = s.downloadPoster(f.PosterURL); err != nil {
+			return domain.LiveShow{}, err
+		}
+	}
+	e.PosterURL = f.PosterURL
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if poster != nil {
+			if err := attachPoster(tx, e, poster); err != nil {
+				return err
+			}
+		}
+		// Save writes zero values too, which a full replace needs (clearing
+		// the venue, un-marking missed, dropping the poster).
+		return tx.Omit(clause.Associations).Save(e).Error
+	})
+	if err != nil {
+		slog.Error("live: Update failed", "user_id", userId, "id", id, "error", err)
+		return domain.LiveShow{}, err
 	}
 	return s.toDto(e, s.now()), nil
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/internal/testutil"
@@ -14,11 +15,18 @@ var testNow = time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
 
 // newTestService runs the real migrations (testutil.SetupDB), so it also
 // checks that LiveShow is registered for AutoMigrate.
+//
+// Its fetcher may reach 127.0.0.1 on any port, where httptest servers live:
+// tests cannot use public sites. Images land in a temporary data dir.
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	testutil.SetupLogging()
 	s := NewService(testutil.SetupDB(t))
 	s.now = func() time.Time { return testNow }
+	s.fetch = buildFetcher(true, true)
+	prev := config.DataPath
+	config.DataPath = t.TempDir()
+	t.Cleanup(func() { config.DataPath = prev })
 	return s
 }
 

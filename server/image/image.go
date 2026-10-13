@@ -72,6 +72,12 @@ WHERE NOT EXISTS (
 	SELECT 1
 	FROM users
 	WHERE users.avatar_id = images.id
+)
+-- Fork: live show posters (soft-deleted shows keep theirs).
+AND NOT EXISTS (
+	SELECT 1
+	FROM live_shows
+	WHERE live_shows.poster_id = images.id
 );`).Scan(&unusedImgs)
 	slog.Info("cleanupImages: scanned for unused images", "amount", len(unusedImgs))
 	if len(unusedImgs) > 0 {

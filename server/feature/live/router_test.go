@@ -19,7 +19,9 @@ func testEngine(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := &Router{service: newTestService(t)}
 	e := gin.New()
-	g := e.Group("/api/live/shows", func(c *gin.Context) { c.Set("userId", uint(1)) })
+	live := e.Group("/api/live", func(c *gin.Context) { c.Set("userId", uint(1)) })
+	live.POST("/prefill", r.Prefill)
+	g := live.Group("/shows")
 	g.GET("", r.List)
 	g.GET("/:id", r.Get)
 	g.POST("", r.Create)
@@ -57,7 +59,8 @@ func TestHTTPContract(t *testing.T) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	want := "createdAt,date,description,id,missed,state,title,updatedAt,url,venue"
+	// No poster: the key is omitted, posterUrl is "".
+	want := "createdAt,date,description,id,missed,posterUrl,state,title,updatedAt,url,venue"
 	if strings.Join(keys, ",") != want {
 		t.Errorf("keys = %v, want %s", keys, want)
 	}
