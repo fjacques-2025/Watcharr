@@ -15,6 +15,8 @@
 		onClose: () => void;
 		onUpdated: (p: LivePhoto) => void;
 		onDeleted: (photoId: number) => void;
+		/** Makes this photo the show's poster; omitted → no button. */
+		onUseAsPoster?: (photoId: number) => Promise<void>;
 	}
 
 	let {
@@ -25,6 +27,7 @@
 		onClose,
 		onUpdated,
 		onDeleted,
+		onUseAsPoster,
 	}: Props = $props();
 
 	const SWIPE_PX = 50;
@@ -311,6 +314,22 @@
 							/>{/if}
 						Ticket
 					</button>
+					{#if onUseAsPoster}
+						<button
+							class="secondary"
+							onclick={async () => {
+								busy = true;
+								try {
+									await onUseAsPoster(current.id);
+								} finally {
+									busy = false;
+								}
+							}}
+							disabled={busy}
+						>
+							Use as poster
+						</button>
+					{/if}
 					{#if confirmingDelete}
 						<button class="danger" onclick={remove} disabled={busy}>
 							Confirm delete

@@ -9,12 +9,13 @@
 	import MyThoughts from "@/lib/content/MyThoughts.svelte";
 	import LiveFriends from "@/lib/live/LiveFriends.svelte";
 	import LivePhotos from "@/lib/live/LivePhotos.svelte";
-	import LivePoster from "@/lib/live/LivePoster.svelte";
+	import LivePosterControl from "@/lib/live/LivePosterControl.svelte";
 	import LiveShowForm from "@/lib/live/LiveShowForm.svelte";
 	import {
 		deleteShow,
 		errorText,
 		getShow,
+		posterFromPhoto,
 		sortPhotos,
 		toRequest,
 		updateShow,
@@ -99,6 +100,26 @@
 		}
 		return groups;
 	});
+
+	// Only the poster fields: the photos list is kept up to date here as uploads
+	// finish, and a reply must not overwrite one still in flight.
+	function posterChanged(r: LiveShow) {
+		if (!show) return;
+		show.poster = r.poster;
+		show.posterUrl = r.posterUrl;
+		show.updatedAt = r.updatedAt;
+	}
+
+	async function useAsPoster(photoId: number) {
+		if (!show) return;
+		try {
+			posterChanged(await posterFromPhoto(show.id, photoId));
+			notify({ type: "success", text: "Poster updated" });
+		} catch (err) {
+			console.error("live: use as poster failed", err);
+			notify({ type: "error", text: errorText(err) });
+		}
+	}
 
 	async function load(forId: number) {
 		loadError = undefined;
@@ -231,9 +252,13 @@
 			/>
 		{:else}
 			<div class="top">
-				{#if show.poster}
-					<div class="poster"><LivePoster poster={show.poster} /></div>
-				{/if}
+				<div class="poster">
+					<LivePosterControl
+						showId={show.id}
+						poster={show.poster}
+						onChanged={posterChanged}
+					/>
+				</div>
 				<div class="info">
 					<div class="state" data-state={show.state}>
 						{stateLabels[show.state]}
@@ -352,6 +377,7 @@
 					onAdded={photoAdded}
 					onUpdated={photoUpdated}
 					onDeleted={photoDeleted}
+					onUseAsPoster={useAsPoster}
 				/>
 			</section>
 		{/if}

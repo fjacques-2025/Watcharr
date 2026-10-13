@@ -14,9 +14,11 @@
 		onAdded: (p: LivePhoto) => void;
 		onUpdated: (p: LivePhoto) => void;
 		onDeleted: (photoId: number) => void;
+		onUseAsPoster?: (photoId: number) => Promise<void>;
 	}
 
-	let { showId, photos, onAdded, onUpdated, onDeleted }: Props = $props();
+	let { showId, photos, onAdded, onUpdated, onDeleted, onUseAsPoster }: Props =
+		$props();
 
 	type Upload = {
 		key: number;
@@ -181,6 +183,7 @@
 		onClose={() => (openId = undefined)}
 		{onUpdated}
 		{onDeleted}
+		{onUseAsPoster}
 	/>
 {/if}
 
