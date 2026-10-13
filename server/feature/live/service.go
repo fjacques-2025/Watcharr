@@ -156,13 +156,16 @@ func (s *Service) Update(userId, id uint, r domain.LiveShowRequest) (domain.Live
 	e.Date = f.Date
 	e.Missed = f.Missed
 
-	// Same source as stored: keep the copy we have. The image is never
-	// deleted here, other rows may share it (the saver dedups by hash).
+	// Same source as stored: keep the copy we have. That includes an empty
+	// source with a poster: one uploaded or taken from a photo has no URL, so
+	// the form sends "" back, and that must not drop it (RemovePoster does).
+	// The image is never deleted here, other rows may share it (the saver
+	// dedups by hash).
 	var poster []byte
 	switch {
+	case f.PosterURL == e.PosterURL && (f.PosterURL == "" || e.PosterID != nil):
 	case f.PosterURL == "":
 		e.PosterID, e.Poster = nil, nil
-	case f.PosterURL == e.PosterURL && e.PosterID != nil:
 	default:
 		if poster, err = s.downloadPoster(f.PosterURL); err != nil {
 			return domain.LiveShow{}, err

@@ -26,7 +26,13 @@ func NewRouter(br *router.BaseRouter, service *Service) *Router {
 func (r *Router) AddRoutes() {
 	live := r.br.Router.Group("/live")
 	live.Use(authmiddleware.AuthRequired(r.br.Cfg))
+	r.register(live)
+}
 
+// register declares every live route on a group that already authenticates.
+// Tests call it too, behind a stand-in for the auth middleware, so the two
+// route tables can't drift apart.
+func (r *Router) register(live *gin.RouterGroup) {
 	live.POST("/prefill", r.Prefill)
 	live.GET("/tmdb-people", r.TmdbPeople)
 	live.GET("/friends", r.Friends)
@@ -41,6 +47,9 @@ func (r *Router) AddRoutes() {
 	shows.POST("/:id/photos", r.AddPhoto)
 	shows.PUT("/:id/photos/:photoId", r.UpdatePhoto)
 	shows.DELETE("/:id/photos/:photoId", r.DeletePhoto)
+	shows.POST("/:id/poster", r.UploadPoster)
+	shows.POST("/:id/poster/from-photo/:photoId", r.PosterFromPhoto)
+	shows.DELETE("/:id/poster", r.RemovePoster)
 
 	people := live.Group("/people")
 	people.GET("", r.People)
@@ -353,4 +362,63 @@ func (r *Router) DeletePhoto(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// UploadPoster takes a multipart form with the image in `poster`.
+func (r *Router) UploadPoster(c *gin.Context) {
+	id, ok := showId(c)
+	if !ok {
+		return
+	}
+	// Capped before parsing, like photos.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxPhotoBodyBytes)
+	fh, err := c.FormFile("poster")
+	if err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			c.JSON(http.StatusRequestEntityTooLarge, router.ErrorResponse{Error: "could not use that poster image: file is too big"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "poster is required"})
+		return
+	}
+	f, err := fh.Open()
+	if err != nil {
+		slog.Error("live: UploadPoster open failed", "error", err)
+		c.JSON(http.StatusInternalServerError, router.ErrorResponse{Error: "internal error"})
+		return
+	}
+	defer f.Close()
+	show, err := r.service.UploadPoster(c.MustGet("userId").(uint), id, f)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, show)
+}
+
+func (r *Router) PosterFromPhoto(c *gin.Context) {
+	id, photoId, ok := photoIds(c)
+	if !ok {
+		return
+	}
+	show, err := r.service.PosterFromPhoto(c.MustGet("userId").(uint), id, photoId)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, show)
+}
+
+func (r *Router) RemovePoster(c *gin.Context) {
+	id, ok := showId(c)
+	if !ok {
+		return
+	}
+	show, err := r.service.RemovePoster(c.MustGet("userId").(uint), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, show)
 }
