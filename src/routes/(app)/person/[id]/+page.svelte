@@ -16,6 +16,7 @@
 	import BackButton from "@/lib/generic/BackButton.svelte";
 	import PosterImage from "@/lib/content/PosterImage.svelte";
 	import ExpandableText from "@/lib/content/ExpandableText.svelte";
+	import LiveOnStage from "@/lib/live/LiveOnStage.svelte";
 
 	let { data } = $props();
 
@@ -194,6 +195,7 @@
 					</div>
 				</div>
 			</div>
+			<LiveOnStage tmdbPersonId={data.personId} />
 			{#if credits}
 				{#if credits?.credits && credits?.credits?.length > 0}
 					<div class="filters">
