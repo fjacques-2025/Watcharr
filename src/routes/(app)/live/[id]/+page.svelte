@@ -32,33 +32,58 @@
 	let confirmingDelete = $state(false);
 	let busy = $state(false);
 
-	// Credits as a theatre programme prints them: a person's roles together
-	// ("Writer · Director · Performer"), people sharing the same roles on one
-	// line, in order of first appearance.
+	// Credits as a theatre programme prints them: one line per role, in
+	// programme order (writing and staging first, then the cast, the company
+	// last), people in the order entered. Roles held by exactly the same people
+	// share a line ("Writer · Director — X"), but the cast stays complete: a
+	// writer-director who also plays is listed among the performers, with
+	// their character.
+	const roleRank = [
+		"Writer",
+		"Translation",
+		"Director",
+		"Choreographer",
+		"Music",
+		"Performer",
+	];
+	function rankOf(role: string) {
+		const i = roleRank.indexOf(role);
+		if (i >= 0) return i;
+		return role === "Company" ? 1000 : 500;
+	}
+
 	let creditGroups = $derived.by(() => {
-		type Person = {
-			personId: number;
-			name: string;
-			roles: string[];
-			/** The character played (from their "Performer" credit); "" if none. */
-			character: string;
-		};
-		const people: Person[] = [];
+		type Entry = { personId: number; name: string; character: string };
+		const byRole: Record<string, Entry[]> = {};
+		const seen: string[] = [];
 		for (const c of show?.credits ?? []) {
-			let p = people.find((x) => x.personId === c.personId);
-			if (!p) {
-				p = { personId: c.personId, name: c.name, roles: [], character: "" };
-				people.push(p);
+			if (!byRole[c.role]) {
+				byRole[c.role] = [];
+				seen.push(c.role);
 			}
-			if (!p.roles.includes(c.role)) p.roles.push(c.role);
-			if (c.role === "Performer" && c.character) p.character = c.character;
+			if (!byRole[c.role].some((e) => e.personId === c.personId))
+				byRole[c.role].push({
+					personId: c.personId,
+					name: c.name,
+					character: c.role === "Performer" ? c.character : "",
+				});
 		}
-		const groups: [string, Person[]][] = [];
-		for (const p of people) {
-			const label = p.roles.join(" · ");
-			const g = groups.find(([l]) => l === label);
-			if (g) g[1].push(p);
-			else groups.push([label, [p]]);
+		const roles = seen
+			.map((r, i) => ({ r, i }))
+			.sort((a, b) => rankOf(a.r) - rankOf(b.r) || a.i - b.i)
+			.map((x) => x.r);
+		const groups: [string, Entry[]][] = [];
+		const key = (es: Entry[]) => es.map((e) => e.personId).join(",");
+		for (const r of roles) {
+			const people = byRole[r];
+			const g = groups.find(([, es]) => key(es) === key(people));
+			if (!g) {
+				groups.push([r, people]);
+				continue;
+			}
+			g[0] = `${g[0]} · ${r}`;
+			// Same people: keep the entries that carry the characters.
+			if (r === "Performer") g[1] = people;
 		}
 		return groups;
 	});
