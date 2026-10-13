@@ -1,6 +1,12 @@
 <script lang="ts">
 	import type { LiveShow, LiveShowRequest } from "@/types";
 	import { errorText, prefillFromLink } from "./api";
+	import LiveCreditsEditor, {
+		creditRowsToRequest,
+		newCreditRow,
+		validateCreditRows,
+		type CreditRow,
+	} from "./LiveCreditsEditor.svelte";
 	import {
 		formatDayRange,
 		formatShowDate,
@@ -32,6 +38,9 @@
 	// Edit mode starts from the stored address: saving unchanged keeps the
 	// poster, clearing it removes it.
 	let posterUrl = $state(seed?.posterUrl ?? "");
+	let credits: CreditRow[] = $state(
+		(seed?.credits ?? []).map((c) => newCreditRow(c)),
+	);
 	let saving = $state(false);
 	let error: string | undefined = $state();
 
@@ -98,6 +107,7 @@
 			return "The link must be a full http(s) address.";
 		if (posterUrl.trim() && !isHttpUrl(posterUrl.trim()))
 			return "The poster image URL must be a full http(s) address.";
+		return validateCreditRows(credits);
 	}
 
 	async function prefill() {
@@ -156,6 +166,8 @@
 				description: description.trim(),
 				date: fromLocalInput(date)!,
 				posterUrl: posterUrl.trim(),
+				// Always sent: the form holds the full list, so it replaces it.
+				credits: creditRowsToRequest(credits),
 			});
 		} catch (err) {
 			console.error("LiveShowForm: submit failed", err);
@@ -288,6 +300,7 @@
 		<span>Description</span>
 		<textarea bind:value={description} rows={6} maxlength={5000}></textarea>
 	</label>
+	<LiveCreditsEditor bind:rows={credits} />
 
 	{#if error}
 		<p class="error" role="alert">{error}</p>

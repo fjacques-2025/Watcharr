@@ -17,7 +17,12 @@
 	} from "@/lib/live/api";
 	import { formatShowDate } from "@/lib/live/date";
 	import { notify } from "@/lib/util/notify";
-	import type { LiveShow, LiveShowRequest, LiveShowState } from "@/types";
+	import type {
+		LiveCredit,
+		LiveShow,
+		LiveShowRequest,
+		LiveShowState,
+	} from "@/types";
 
 	const stateLabels: Record<LiveShowState, string> = {
 		upcoming: "Upcoming",
@@ -31,6 +36,17 @@
 	let editing = $state(false);
 	let confirmingDelete = $state(false);
 	let busy = $state(false);
+
+	// Credits by role, roles in the order they first appear, names in order.
+	let creditGroups = $derived.by(() => {
+		const groups: [string, LiveCredit[]][] = [];
+		for (const c of show?.credits ?? []) {
+			const g = groups.find(([role]) => role === c.role);
+			if (g) g[1].push(c);
+			else groups.push([c.role, [c]]);
+		}
+		return groups;
+	});
 
 	async function load(forId: number) {
 		loadError = undefined;
@@ -148,6 +164,21 @@
 					{/if}
 				</div>
 			</div>
+			{#if creditGroups.length}
+				<dl class="credits">
+					{#each creditGroups as [role, people] (role)}
+						<div>
+							<dt>{role}</dt>
+							<dd>
+								{#each people as c, i (`${c.personId}-${i}`)}
+									<a href={resolve(`/live/people/${c.personId}`)}>{c.name}</a
+									>{#if i < people.length - 1}<span class="sep">,</span>{/if}
+								{/each}
+							</dd>
+						</div>
+					{/each}
+				</dl>
+			{/if}
 			{#if show.description}
 				<p class="description">{show.description}</p>
 			{/if}
@@ -256,6 +287,41 @@
 		fill: currentColor;
 		text-decoration: underline;
 		overflow-wrap: anywhere;
+	}
+
+	.credits {
+		display: flex;
+		flex-flow: column;
+		gap: 6px;
+		margin: 16px 0 0 0;
+
+		div {
+			display: flex;
+			flex-flow: row wrap;
+			gap: 0 8px;
+		}
+
+		dt {
+			color: $text-color-accent;
+		}
+
+		dd {
+			margin: 0;
+			overflow-wrap: anywhere;
+
+			a {
+				color: $text-color;
+				text-decoration: underline;
+				text-decoration-color: $bg-color-accent;
+				text-underline-offset: 3px;
+
+				@media (hover: hover) {
+					&:hover {
+						text-decoration-color: currentColor;
+					}
+				}
+			}
+		}
 	}
 
 	.description {

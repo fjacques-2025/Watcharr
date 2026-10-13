@@ -974,8 +974,40 @@ export interface LiveShow {
 	posterUrl: string;
 	/** The locally stored copy of the poster, absent when there is none. */
 	poster?: LiveShowPoster;
+	/** Who was in it and in what capacity, in the order they were entered. */
+	credits: LiveCredit[];
 	createdAt: string;
 	updatedAt: string;
+}
+
+/** One person + role on a show. People are matched by name in the notebook;
+ *  `tmdbPersonId` links them to a TMDB person, only ever by the user's choice. */
+export interface LiveCredit {
+	personId: number;
+	name: string;
+	role: string;
+	tmdbPersonId: number | null;
+}
+
+export interface LiveCreditRequest {
+	name: string;
+	role: string;
+	tmdbPersonId?: number | null;
+}
+
+export interface LivePersonSummary {
+	id: number;
+	name: string;
+	tmdbPersonId: number | null;
+	showCount: number;
+}
+
+export interface LivePersonDetail {
+	id: number;
+	name: string;
+	tmdbPersonId: number | null;
+	/** Most credited role first; shows most recent first. */
+	roles: { role: string; shows: LiveShow[] }[];
 }
 
 export interface LiveShowPoster {
@@ -995,6 +1027,8 @@ export interface LiveShowRequest {
 	/** PUT replaces it: "" removes the poster, the stored value keeps it, a
 	 *  new address makes the server download and store that image. */
 	posterUrl: string;
+	/** Absent: left unchanged. Present: replaces them all, in this order. */
+	credits?: LiveCreditRequest[];
 }
 
 /** What the server could read from a show's page; "" for anything unknown. */
