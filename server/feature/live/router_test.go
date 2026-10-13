@@ -27,6 +27,11 @@ func testEngine(t *testing.T) *gin.Engine {
 	g.POST("", r.Create)
 	g.PUT("/:id", r.Update)
 	g.DELETE("/:id", r.Delete)
+	p := live.Group("/people")
+	p.GET("", r.People)
+	p.GET("/by-tmdb/:tmdbId", r.PersonByTmdb)
+	p.GET("/:id", r.Person)
+	p.PUT("/:id", r.UpdatePerson)
 	return e
 }
 
@@ -60,9 +65,12 @@ func TestHTTPContract(t *testing.T) {
 	}
 	sort.Strings(keys)
 	// No poster: the key is omitted, posterUrl is "".
-	want := "createdAt,date,description,id,missed,posterUrl,state,title,updatedAt,url,venue"
+	want := "createdAt,credits,date,description,id,missed,posterUrl,state,title,updatedAt,url,venue"
 	if strings.Join(keys, ",") != want {
 		t.Errorf("keys = %v, want %s", keys, want)
+	}
+	if c, ok := obj["credits"].([]any); !ok || len(c) != 0 {
+		t.Errorf("credits = %#v, want []", obj["credits"])
 	}
 	if obj["date"] != "2026-11-05T19:00:00Z" {
 		t.Errorf("date = %v", obj["date"])

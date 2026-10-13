@@ -14,6 +14,9 @@ const (
 	maxTitle       = 300
 	maxVenue       = 200
 	maxDescription = 5000
+	maxPersonName  = 200
+	maxRole        = 100
+	maxCredits     = 100
 )
 
 // ValidationError is a problem with the request itself, reported as a 400.
@@ -36,6 +39,14 @@ type showFields struct {
 	Date        time.Time
 	Missed      bool
 	PosterURL   string
+	// nil: leave the credits as they are.
+	Credits *[]creditFields
+}
+
+type creditFields struct {
+	Name   string
+	Role   string
+	TmdbID *int
 }
 
 // validate trims and checks a request. Lengths count characters, not bytes:
@@ -78,7 +89,63 @@ func validate(r domain.LiveShowRequest) (showFields, error) {
 		return f, invalid("date must be an RFC3339 date-time (e.g. 2026-10-13T20:30:00+02:00)")
 	}
 	f.Date = d.UTC()
+	if r.Credits != nil {
+		cs, err := validateCredits(*r.Credits)
+		if err != nil {
+			return f, err
+		}
+		f.Credits = &cs
+	}
 	return f, nil
+}
+
+func validateCredits(in []domain.LiveCreditRequest) ([]creditFields, error) {
+	if len(in) > maxCredits {
+		return nil, invalid("at most %d credits", maxCredits)
+	}
+	out := make([]creditFields, 0, len(in))
+	for i, c := range in {
+		name, err := validPersonName(c.Name)
+		if err != nil {
+			return nil, invalid("credits[%d]: %s", i, err.Error())
+		}
+		role := collapseSpaces(c.Role)
+		if role == "" {
+			return nil, invalid("credits[%d]: role is required", i)
+		}
+		if utf8.RuneCountInString(role) > maxRole {
+			return nil, invalid("credits[%d]: role must be at most %d characters", i, maxRole)
+		}
+		if err := validTmdbID(c.TmdbPersonID); err != nil {
+			return nil, invalid("credits[%d]: %s", i, err.Error())
+		}
+		out = append(out, creditFields{Name: name, Role: role, TmdbID: c.TmdbPersonID})
+	}
+	return out, nil
+}
+
+func validPersonName(raw string) (string, error) {
+	name := collapseSpaces(raw)
+	if name == "" {
+		return "", invalid("name is required")
+	}
+	if utf8.RuneCountInString(name) > maxPersonName {
+		return "", invalid("name must be at most %d characters", maxPersonName)
+	}
+	return name, nil
+}
+
+func validTmdbID(id *int) error {
+	if id != nil && *id <= 0 {
+		return invalid("tmdbPersonId must be a positive integer")
+	}
+	return nil
+}
+
+// collapseSpaces trims and turns every run of whitespace into one space, so
+// "Jean  Dupont" typed twice is the same artist.
+func collapseSpaces(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 func isAbsoluteHTTP(raw string) bool {
