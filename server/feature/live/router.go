@@ -142,7 +142,7 @@ func (r *Router) Prefill(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	p, err := r.service.Prefill(c.Request.Context(), req.URL)
+	p, err := r.service.Prefill(c.Request.Context(), c.MustGet("userId").(uint), req.URL)
 	if err != nil {
 		respondError(c, err)
 		return

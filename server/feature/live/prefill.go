@@ -20,8 +20,8 @@ var errUnreadable = errors.New("could not read that page")
 
 // Prefill reads the page behind a link and proposes the fields it can fill.
 // Everything comes back within the validation limits, so the form can be
-// saved as-is.
-func (s *Service) Prefill(ctx context.Context, rawURL string) (domain.LivePrefill, error) {
+// saved as-is. userId is whose shows the venue may be remembered from.
+func (s *Service) Prefill(ctx context.Context, userId uint, rawURL string) (domain.LivePrefill, error) {
 	u, err := s.fetch.parseURL(rawURL)
 	if err != nil {
 		return domain.LivePrefill{}, err
@@ -46,7 +46,7 @@ func (s *Service) Prefill(ctx context.Context, rawURL string) (domain.LivePrefil
 		return domain.LivePrefill{}, errUnreadable
 	}
 	m := parsePage(bytes.NewReader(page.Body))
-	return buildPrefill(page.FinalURL, m), nil
+	return buildPrefillWithVenue(page.FinalURL, m, s.rememberedVenue(userId, page.FinalURL)), nil
 }
 
 // pageMeta is what we pick from the page, raw (still to be cleaned).
@@ -153,6 +153,13 @@ func (m *pageMeta) readMeta(z *html.Tokenizer) {
 }
 
 func buildPrefill(pageURL *url.URL, m pageMeta) domain.LivePrefill {
+	return buildPrefillWithVenue(pageURL, m, "")
+}
+
+// buildPrefillWithVenue is buildPrefill with the venue the user last typed
+// for a show from the same site: it beats og:site_name (often the site's
+// name rather than the hall's) but not a venue the page itself declares.
+func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) domain.LivePrefill {
 	first := func(vals ...string) string {
 		for _, v := range vals {
 			if v = cleanText(v); v != "" {
@@ -199,7 +206,7 @@ func buildPrefill(pageURL *url.URL, m pageMeta) domain.LivePrefill {
 		URL:         pageURL.String(),
 		Title:       truncateRunes(title, maxTitle),
 		Description: truncateRunes(desc, maxDescription),
-		Venue:       truncateRunes(first(ldVenue, site), maxVenue),
+		Venue:       truncateRunes(first(ldVenue, remembered, site), maxVenue),
 		// JSON-LD images last: they are often originals, which can exceed
 		// what the poster saver accepts.
 		PosterURL: resolveImage(pageURL, append([]string{
