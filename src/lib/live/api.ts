@@ -59,6 +59,20 @@ export function uploadPhoto(
 	return req.post<LivePhoto>(`/live/shows/${showId}/photos`, fd);
 }
 
+/** A poster chosen by the user, for pages that declare none. */
+export function uploadPoster(showId: number, poster: Blob) {
+	const fd = new FormData();
+	fd.append("poster", poster, "poster.jpg");
+	return req.post<LiveShow>(`/live/shows/${showId}/poster`, fd);
+}
+
+/** Use one of the show's photos (a snap of the poster or programme). */
+export const posterFromPhoto = (showId: number, photoId: number) =>
+	req.post<LiveShow>(`/live/shows/${showId}/poster/from-photo/${photoId}`);
+
+export const removePoster = (showId: number) =>
+	req.delete<LiveShow>(`/live/shows/${showId}/poster`);
+
 export const updatePhoto = (
 	showId: number,
 	photoId: number,
