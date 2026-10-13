@@ -1017,4 +1017,10 @@ export interface LiveShowPrefill {
 	description: string;
 	venue: string;
 	posterUrl: string;
+	/** RFC3339 date-times of the individual performances the page lists
+	 *  (sorted ascending, may include past ones); [] when it gives none. */
+	performances: string[];
+	/** When the page only gives a date range without times, as "YYYY-MM-DD"
+	 *  days, e.g. { start: "2027-04-07", end: "2027-04-09" }; null otherwise. */
+	dateRange: { start: string; end: string } | null;
 }
