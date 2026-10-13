@@ -20,18 +20,28 @@ func testEngine(t *testing.T) *gin.Engine {
 }
 
 func testEngineWith(s *Service) *gin.Engine {
+	return testEngineAs(s, 1)
+}
+
+// testEngineAs serves the routes as the given user, for scoping tests.
+func testEngineAs(s *Service, userId uint) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := &Router{service: s}
 	e := gin.New()
-	live := e.Group("/api/live", func(c *gin.Context) { c.Set("userId", uint(1)) })
+	live := e.Group("/api/live", func(c *gin.Context) { c.Set("userId", userId) })
 	live.POST("/prefill", r.Prefill)
 	live.GET("/tmdb-people", r.TmdbPeople)
+	live.GET("/friends", r.Friends)
 	g := live.Group("/shows")
 	g.GET("", r.List)
 	g.GET("/:id", r.Get)
 	g.POST("", r.Create)
 	g.PUT("/:id", r.Update)
 	g.DELETE("/:id", r.Delete)
+	g.PATCH("/:id/souvenir", r.UpdateSouvenir)
+	g.POST("/:id/photos", r.AddPhoto)
+	g.PUT("/:id/photos/:photoId", r.UpdatePhoto)
+	g.DELETE("/:id/photos/:photoId", r.DeletePhoto)
 	p := live.Group("/people")
 	p.GET("", r.People)
 	p.GET("/by-tmdb/:tmdbId", r.PersonByTmdb)
@@ -70,7 +80,7 @@ func TestHTTPContract(t *testing.T) {
 	}
 	sort.Strings(keys)
 	// No poster: the key is omitted, posterUrl is "".
-	want := "createdAt,credits,date,description,id,missed,posterUrl,state,title,updatedAt,url,venue"
+	want := "comment,createdAt,credits,date,description,friends,id,missed,photos,posterUrl,rating,state,title,updatedAt,url,venue"
 	if strings.Join(keys, ",") != want {
 		t.Errorf("keys = %v, want %s", keys, want)
 	}

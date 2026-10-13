@@ -31,4 +31,8 @@ type LiveShow struct {
 	// season. Points into the shared images table, like Game.Poster.
 	PosterID *uint  `json:"-"`
 	Poster   *Image `json:"poster,omitempty"`
+	// Out of 10 with one decimal, like Watcharr's own ratings; NULL when not
+	// rated, which 0 cannot say. Written only by the souvenir endpoint.
+	Rating  *float64 `json:"rating"`
+	Comment string   `json:"comment" gorm:"not null;default:''"`
 }

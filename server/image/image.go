@@ -78,6 +78,12 @@ AND NOT EXISTS (
 	SELECT 1
 	FROM live_shows
 	WHERE live_shows.poster_id = images.id
+)
+-- Fork: live show photos (rows of soft-deleted shows keep theirs).
+AND NOT EXISTS (
+	SELECT 1
+	FROM live_photos
+	WHERE live_photos.image_id = images.id
 );`).Scan(&unusedImgs)
 	slog.Info("cleanupImages: scanned for unused images", "amount", len(unusedImgs))
 	if len(unusedImgs) > 0 {
