@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sbondCo/Watcharr/domain"
 	"golang.org/x/net/html"
@@ -44,23 +45,25 @@ func (s *Service) Prefill(ctx context.Context, rawURL string) (domain.LivePrefil
 		slog.Warn("live: prefill not HTML", "url", page.FinalURL.Redacted(), "content_type", page.ContentType)
 		return domain.LivePrefill{}, errUnreadable
 	}
-	m := parseHead(bytes.NewReader(page.Body))
+	m := parsePage(bytes.NewReader(page.Body))
 	return buildPrefill(page.FinalURL, m), nil
 }
 
-// headMeta is what we pick from <head>, raw (still to be cleaned).
-type headMeta struct {
+// pageMeta is what we pick from the page, raw (still to be cleaned).
+type pageMeta struct {
 	title    string // <title>
 	props    map[string]string
 	metaDesc string // <meta name="description">
+	events   []ldEvent
 }
 
-// parseHead tokenizes up to </head> or <body>: the metadata is all there and
-// the rest of the page can be huge.
-func parseHead(r io.Reader) headMeta {
-	m := headMeta{props: map[string]string{}}
+// parsePage reads <title> and <meta> from the head only (a <meta> in the body
+// is not the page's), and JSON-LD from anywhere: some sites print it at the
+// end of the body. The fetcher already capped the page size.
+func parsePage(r io.Reader) pageMeta {
+	m := pageMeta{props: map[string]string{}}
 	z := html.NewTokenizer(r)
-	inTitle := false
+	inHead, inTitle, inLD := true, false, false
 	for {
 		switch z.Next() {
 		case html.ErrorToken:
@@ -69,32 +72,51 @@ func parseHead(r io.Reader) headMeta {
 			name, hasAttr := z.TagName()
 			switch string(name) {
 			case "body":
-				return m
+				inHead = false
 			case "title":
-				inTitle = true
+				inTitle = inHead
 			case "meta":
-				if hasAttr {
+				if inHead && hasAttr {
 					m.readMeta(z)
 				}
+			case "script":
+				inLD = hasAttr && isLDScript(z)
 			}
 		case html.EndTagToken:
 			name, _ := z.TagName()
 			switch string(name) {
 			case "head":
-				return m
+				inHead = false
 			case "title":
 				inTitle = false
+			case "script":
+				inLD = false
 			}
 		case html.TextToken:
 			// First <title> wins; an SVG <title> further down is not ours.
 			if inTitle && m.title == "" {
 				m.title = string(z.Text())
 			}
+			if inLD {
+				parseJSONLD(z.Text(), &m.events)
+			}
 		}
 	}
 }
 
-func (m *headMeta) readMeta(z *html.Tokenizer) {
+func isLDScript(z *html.Tokenizer) bool {
+	for {
+		k, v, more := z.TagAttr()
+		if strings.EqualFold(string(k), "type") {
+			return strings.EqualFold(strings.TrimSpace(string(v)), "application/ld+json")
+		}
+		if !more {
+			return false
+		}
+	}
+}
+
+func (m *pageMeta) readMeta(z *html.Tokenizer) {
 	var key, name, content string
 	hasContent := false
 	for {
@@ -130,7 +152,7 @@ func (m *headMeta) readMeta(z *html.Tokenizer) {
 	}
 }
 
-func buildPrefill(pageURL *url.URL, m headMeta) domain.LivePrefill {
+func buildPrefill(pageURL *url.URL, m pageMeta) domain.LivePrefill {
 	first := func(vals ...string) string {
 		for _, v := range vals {
 			if v = cleanText(v); v != "" {
@@ -139,14 +161,88 @@ func buildPrefill(pageURL *url.URL, m headMeta) domain.LivePrefill {
 		}
 		return ""
 	}
+	// A page with one event per performance repeats the same show: the
+	// first value given wins for each field.
+	var ldName, ldDesc, ldVenue string
+	var ldImages []string
+	for _, e := range m.events {
+		if ldName == "" {
+			ldName = cleanText(e.name)
+		}
+		if ldDesc == "" {
+			ldDesc = cleanText(e.description)
+		}
+		if ldVenue == "" {
+			ldVenue = cleanText(e.location)
+		}
+		ldImages = append(ldImages, e.images...)
+	}
+	site := first(m.props["og:site_name"])
+
+	// The event name is the bare title; og:title and <title> tend to append
+	// credits and the site's name.
+	title := stripSiteSuffix(first(ldName, m.props["og:title"], m.title), site)
+
+	// Neither source is reliably the synopsis: Les Théâtres puts the credits
+	// in JSON-LD and the synopsis in og, Joliette the full synopsis in JSON-LD
+	// and a truncated one in og. The longer one is the better bet.
+	desc := first(m.props["og:description"])
+	if utf8.RuneCountInString(ldDesc) > utf8.RuneCountInString(desc) {
+		desc = ldDesc
+	}
+	if desc == "" {
+		desc = first(m.metaDesc)
+	}
+
+	perfs, rng := eventDates(m.events)
 	return domain.LivePrefill{
 		URL:         pageURL.String(),
-		Title:       truncateRunes(first(m.props["og:title"], m.title), maxTitle),
-		Description: truncateRunes(first(m.props["og:description"], m.metaDesc), maxDescription),
-		Venue:       truncateRunes(first(m.props["og:site_name"]), maxVenue),
-		PosterURL: resolveImage(pageURL,
-			m.props["og:image"], m.props["og:image:url"], m.props["twitter:image"]),
+		Title:       truncateRunes(title, maxTitle),
+		Description: truncateRunes(desc, maxDescription),
+		Venue:       truncateRunes(first(ldVenue, site), maxVenue),
+		// JSON-LD images last: they are often originals, which can exceed
+		// what the poster saver accepts.
+		PosterURL: resolveImage(pageURL, append([]string{
+			m.props["og:image"], m.props["og:image:url"], m.props["twitter:image"],
+		}, ldImages...)...),
+		Performances: perfs,
+		DateRange:    rng,
 	}
+}
+
+var titleSeparators = []string{" | ", " - ", " – ", " — ", " • ", " · "}
+
+// stripSiteSuffix drops a trailing " | Site name…" segment, as in
+// "Show - Credits | Les Théâtres • Saison 26•27". Only when we know the site
+// name: guessing from separators alone would cut real titles. Case is kept,
+// lowering it would mangle proper nouns.
+func stripSiteSuffix(title, site string) string {
+	if site == "" {
+		return title
+	}
+	lowSite := strings.ToLower(site)
+	// Twice, for "Show | Site | Site" style titles.
+	for range 2 {
+		cut := -1
+		for _, sep := range titleSeparators {
+			for i := strings.Index(title, sep); i >= 0; {
+				rest := title[i+len(sep):]
+				if i > 0 && strings.HasPrefix(strings.ToLower(rest), lowSite) && i > cut {
+					cut = i
+				}
+				next := strings.Index(rest, sep)
+				if next < 0 {
+					break
+				}
+				i += len(sep) + next
+			}
+		}
+		if cut < 0 {
+			break
+		}
+		title = strings.TrimSpace(title[:cut])
+	}
+	return title
 }
 
 // cleanText unescapes entities (the tokenizer already did once; some sites
