@@ -157,7 +157,7 @@ func (s *Service) creditsFor(showIds []uint) (map[uint][]domain.LiveCredit, erro
 	return out, nil
 }
 
-// toDtos converts shows, loading their credits.
+// toDtos converts shows, loading their credits, friends and photos.
 func (s *Service) toDtos(rows []entity.LiveShow) ([]domain.LiveShow, error) {
 	ids := make([]uint, len(rows))
 	for i := range rows {
@@ -167,10 +167,19 @@ func (s *Service) toDtos(rows []entity.LiveShow) ([]domain.LiveShow, error) {
 	if err != nil {
 		return nil, err
 	}
+	friends, err := s.friendsFor(ids)
+	if err != nil {
+		return nil, err
+	}
+	photos, err := s.photosFor(ids)
+	if err != nil {
+		return nil, err
+	}
 	now := s.now()
 	out := make([]domain.LiveShow, 0, len(rows))
 	for i := range rows {
-		out = append(out, s.toDto(&rows[i], now, credits[rows[i].ID]))
+		id := rows[i].ID
+		out = append(out, s.toDto(&rows[i], now, credits[id], friends[id], photos[id]))
 	}
 	return out, nil
 }

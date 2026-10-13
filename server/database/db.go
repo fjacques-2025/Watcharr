@@ -63,6 +63,9 @@ func Setup(db *gorm.DB) error {
 		&entity.LiveShow{},
 		&entity.LivePerson{},
 		&entity.LiveCredit{},
+		&entity.LiveFriend{},
+		&entity.LiveShowFriend{},
+		&entity.LivePhoto{},
 	)
 	if err != nil {
 		slog.Error("Setup: Auto migration failed.")
