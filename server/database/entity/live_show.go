@@ -24,4 +24,11 @@ type LiveShow struct {
 	Date time.Time `json:"date" gorm:"not null;index"`
 	// User correction: they did not go (cancelled, missed...).
 	Missed bool `json:"missed" gorm:"not null;default:false"`
+	// Where the poster was downloaded from, to skip downloading it again
+	// when the show is saved unchanged.
+	PosterURL string `json:"posterUrl"`
+	// Local copy of the poster: venue pages disappear at the end of the
+	// season. Points into the shared images table, like Game.Poster.
+	PosterID *uint  `json:"-"`
+	Poster   *Image `json:"poster,omitempty"`
 }

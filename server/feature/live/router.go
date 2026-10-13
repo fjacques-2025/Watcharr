@@ -22,9 +22,12 @@ func NewRouter(br *router.BaseRouter, service *Service) *Router {
 }
 
 func (r *Router) AddRoutes() {
-	shows := r.br.Router.Group("/live/shows").
-		Use(authmiddleware.AuthRequired(r.br.Cfg))
+	live := r.br.Router.Group("/live")
+	live.Use(authmiddleware.AuthRequired(r.br.Cfg))
 
+	live.POST("/prefill", r.Prefill)
+
+	shows := live.Group("/shows")
 	shows.GET("", r.List)
 	shows.GET("/:id", r.Get)
 	shows.POST("", r.Create)
@@ -39,6 +42,8 @@ func respondError(c *gin.Context, err error) {
 	switch {
 	case errors.As(err, &verr):
 		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: verr.Msg})
+	case errors.Is(err, errUnreadable):
+		c.JSON(http.StatusBadGateway, router.ErrorResponse{Error: errUnreadable.Error()})
 	case errors.Is(err, ErrNotFound):
 		c.JSON(http.StatusNotFound, router.ErrorResponse{Error: "live show not found"})
 	default:
@@ -128,4 +133,19 @@ func (r *Router) Delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (r *Router) Prefill(c *gin.Context) {
+	var req domain.LivePrefillRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("live: Prefill ShouldBindJSON failed", "error", err)
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+	p, err := r.service.Prefill(c.Request.Context(), req.URL)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, p)
 }

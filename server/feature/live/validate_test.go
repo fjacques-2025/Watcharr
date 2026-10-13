@@ -61,6 +61,9 @@ func TestValidateRejects(t *testing.T) {
 		{"ftp url", func(r *domain.LiveShowRequest) { r.URL = "ftp://example.com/x" }, "url"},
 		{"javascript url", func(r *domain.LiveShowRequest) { r.URL = "javascript:alert(1)" }, "url"},
 		{"no host", func(r *domain.LiveShowRequest) { r.URL = "https://" }, "url"},
+		{"relative poster", func(r *domain.LiveShowRequest) { r.PosterURL = "/img/a.jpg" }, "posterUrl"},
+		{"data poster", func(r *domain.LiveShowRequest) { r.PosterURL = "data:image/png;base64,AAAA" }, "posterUrl"},
+		{"file poster", func(r *domain.LiveShowRequest) { r.PosterURL = "file:///etc/passwd" }, "posterUrl"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
