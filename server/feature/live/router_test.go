@@ -23,30 +23,14 @@ func testEngineWith(s *Service) *gin.Engine {
 	return testEngineAs(s, 1)
 }
 
-// testEngineAs serves the routes as the given user, for scoping tests.
+// testEngineAs serves the routes as the given user, for scoping tests. Same
+// route table as production (register), with the user set directly instead
+// of through a token.
 func testEngineAs(s *Service, userId uint) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := &Router{service: s}
 	e := gin.New()
-	live := e.Group("/api/live", func(c *gin.Context) { c.Set("userId", userId) })
-	live.POST("/prefill", r.Prefill)
-	live.GET("/tmdb-people", r.TmdbPeople)
-	live.GET("/friends", r.Friends)
-	g := live.Group("/shows")
-	g.GET("", r.List)
-	g.GET("/:id", r.Get)
-	g.POST("", r.Create)
-	g.PUT("/:id", r.Update)
-	g.DELETE("/:id", r.Delete)
-	g.PATCH("/:id/souvenir", r.UpdateSouvenir)
-	g.POST("/:id/photos", r.AddPhoto)
-	g.PUT("/:id/photos/:photoId", r.UpdatePhoto)
-	g.DELETE("/:id/photos/:photoId", r.DeletePhoto)
-	p := live.Group("/people")
-	p.GET("", r.People)
-	p.GET("/by-tmdb/:tmdbId", r.PersonByTmdb)
-	p.GET("/:id", r.Person)
-	p.PUT("/:id", r.UpdatePerson)
+	r.register(e.Group("/api/live", func(c *gin.Context) { c.Set("userId", userId) }))
 	return e
 }
 
