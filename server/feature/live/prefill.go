@@ -7,6 +7,8 @@ import (
 	"io"
 	"log/slog"
 	"net/url"
+	"path"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -55,7 +57,11 @@ type pageMeta struct {
 	props    map[string]string
 	metaDesc string // <meta name="description">
 	events   []ldEvent
+	images   []string // <img> sources in document order, for posterFromPage
 }
+
+// Enough for any real show page; a gallery page needn't be read to its end.
+const maxPageImages = 300
 
 // parsePage reads <title> and <meta> from the head only (a <meta> in the body
 // is not the page's), and JSON-LD from anywhere: some sites print it at the
@@ -81,6 +87,10 @@ func parsePage(r io.Reader) pageMeta {
 				}
 			case "script":
 				inLD = hasAttr && isLDScript(z)
+			case "img":
+				if hasAttr && len(m.images) < maxPageImages {
+					m.images = append(m.images, imgSources(z)...)
+				}
 			}
 		case html.EndTagToken:
 			name, _ := z.TagName()
@@ -102,6 +112,33 @@ func parsePage(r io.Reader) pageMeta {
 			}
 		}
 	}
+}
+
+// imgSources returns an <img>'s source, lazy-loading attributes first: with
+// lazy loading, src is often a placeholder.
+func imgSources(z *html.Tokenizer) []string {
+	var lazy, src string
+	for {
+		k, v, more := z.TagAttr()
+		switch strings.ToLower(string(k)) {
+		case "data-src", "data-lazy-src", "data-original":
+			if lazy == "" {
+				lazy = string(v)
+			}
+		case "src":
+			src = string(v)
+		}
+		if !more {
+			break
+		}
+	}
+	var out []string
+	for _, c := range []string{lazy, src} {
+		if c = strings.TrimSpace(c); c != "" && !strings.HasPrefix(c, "data:") {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func isLDScript(z *html.Tokenizer) bool {
@@ -209,12 +246,88 @@ func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) doma
 		Venue:       truncateRunes(first(ldVenue, remembered, site), maxVenue),
 		// JSON-LD images last: they are often originals, which can exceed
 		// what the poster saver accepts.
-		PosterURL: resolveImage(pageURL, append([]string{
-			m.props["og:image"], m.props["og:image:url"], m.props["twitter:image"],
-		}, ldImages...)...),
+		PosterURL:    poster(pageURL, title, m, ldImages),
 		Performances: perfs,
 		DateRange:    rng,
 	}
+}
+
+// poster: the image the page declares, else one of its images named after
+// the show. The Opéra-Odéon's pages carry og:image:alt but no og:image, while
+// the poster in the page is "la-jalousie-….png" for /programmation/la-jalousie.
+func poster(pageURL *url.URL, title string, m pageMeta, ldImages []string) string {
+	// JSON-LD images last: they are often originals, which can exceed what
+	// the poster saver accepts.
+	declared := resolveImage(pageURL, append([]string{
+		m.props["og:image"], m.props["og:image:url"], m.props["twitter:image"],
+	}, ldImages...)...)
+	if declared != "" {
+		return declared
+	}
+	return posterFromPage(pageURL, title, m.images)
+}
+
+var leadingID = regexp.MustCompile(`^[0-9]+-`)
+
+// posterFromPage picks the first page image whose file name contains the
+// show's slug, taken from the page URL ("…/6102-fete-des-meres" → "fete-des-
+// meres") or from the title. Nothing matches → nothing: a theatre's logo is
+// worse than no poster. Formats the poster saver can't store are skipped.
+func posterFromPage(pageURL *url.URL, title string, images []string) string {
+	var keys []string
+	for _, k := range []string{
+		leadingID.ReplaceAllString(slugFold(path.Base(strings.TrimSuffix(pageURL.Path, "/"))), ""),
+		slugFold(title),
+	} {
+		if len(k) >= 4 {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) == 0 {
+		return ""
+	}
+	for _, c := range images {
+		abs := resolveImage(pageURL, c)
+		if abs == "" {
+			continue
+		}
+		u, err := url.Parse(abs)
+		if err != nil {
+			continue
+		}
+		base := path.Base(u.Path)
+		ext := strings.ToLower(path.Ext(base))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" {
+			continue
+		}
+		name := slugFold(strings.TrimSuffix(base, path.Ext(base)))
+		if strings.Contains(name, "logo") || strings.Contains(name, "icon") {
+			continue
+		}
+		for _, k := range keys {
+			if strings.Contains(name, k) {
+				return abs
+			}
+		}
+	}
+	return ""
+}
+
+// slugFold lowers case, drops accents and turns every run of other
+// characters into one "-": "LA JALOUSIE" and "la-jalousie" agree.
+func slugFold(s string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range searchFold(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			dash = false
+		} else if !dash && b.Len() > 0 {
+			b.WriteByte('-')
+			dash = true
+		}
+	}
+	return strings.TrimSuffix(b.String(), "-")
 }
 
 var titleSeparators = []string{" | ", " - ", " – ", " — ", " • ", " · "}
