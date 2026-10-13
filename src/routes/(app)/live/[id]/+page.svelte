@@ -17,12 +17,7 @@
 	} from "@/lib/live/api";
 	import { formatShowDate } from "@/lib/live/date";
 	import { notify } from "@/lib/util/notify";
-	import type {
-		LiveCredit,
-		LiveShow,
-		LiveShowRequest,
-		LiveShowState,
-	} from "@/types";
+	import type { LiveShow, LiveShowRequest, LiveShowState } from "@/types";
 
 	const stateLabels: Record<LiveShowState, string> = {
 		upcoming: "Upcoming",
@@ -37,13 +32,25 @@
 	let confirmingDelete = $state(false);
 	let busy = $state(false);
 
-	// Credits by role, roles in the order they first appear, names in order.
+	// Credits as a theatre programme prints them: a person's roles together
+	// ("Writer · Director · Performer"), people sharing the same roles on one
+	// line, in order of first appearance.
 	let creditGroups = $derived.by(() => {
-		const groups: [string, LiveCredit[]][] = [];
+		const people: { personId: number; name: string; roles: string[] }[] = [];
 		for (const c of show?.credits ?? []) {
-			const g = groups.find(([role]) => role === c.role);
-			if (g) g[1].push(c);
-			else groups.push([c.role, [c]]);
+			let p = people.find((x) => x.personId === c.personId);
+			if (!p) {
+				p = { personId: c.personId, name: c.name, roles: [] };
+				people.push(p);
+			}
+			if (!p.roles.includes(c.role)) p.roles.push(c.role);
+		}
+		const groups: [string, { personId: number; name: string }[]][] = [];
+		for (const p of people) {
+			const label = p.roles.join(" · ");
+			const g = groups.find(([l]) => l === label);
+			if (g) g[1].push(p);
+			else groups.push([label, [p]]);
 		}
 		return groups;
 	});

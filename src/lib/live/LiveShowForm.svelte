@@ -2,8 +2,8 @@
 	import type { LiveShow, LiveShowRequest } from "@/types";
 	import { errorText, prefillFromLink } from "./api";
 	import LiveCreditsEditor, {
+		creditRowsFromCredits,
 		creditRowsToRequest,
-		newCreditRow,
 		validateCreditRows,
 		type CreditRow,
 	} from "./LiveCreditsEditor.svelte";
@@ -34,9 +34,7 @@
 	// Edit mode starts from the stored address: saving unchanged keeps the
 	// poster, clearing it removes it.
 	let posterUrl = $state(seed?.posterUrl ?? "");
-	let credits: CreditRow[] = $state(
-		(seed?.credits ?? []).map((c) => newCreditRow(c)),
-	);
+	let credits: CreditRow[] = $state(creditRowsFromCredits(seed?.credits ?? []));
 	let saving = $state(false);
 	let error: string | undefined = $state();
 

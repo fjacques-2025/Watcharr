@@ -1,41 +1,83 @@
 <script lang="ts" module>
-	import type { LiveCreditRequest } from "@/types";
+	import type { LiveCredit, LiveCreditRequest } from "@/types";
 
-	/** One editable credit line. `key` only keeps the rows stable in #each. */
+	/** One person and every role they hold in the show. `key` only keeps the
+	 *  rows stable in #each. On stage one person is often writer, director and
+	 *  performer at once: one line with three roles, not three lines. */
 	export interface CreditRow {
 		key: number;
-		role: string;
 		name: string;
 		tmdbPersonId: number | null;
+		roles: string[];
 	}
+
+	export const defaultRoles = [
+		"Performer",
+		"Writer",
+		"Director",
+		"Choreographer",
+		"Company",
+		"Music",
+		"Translation",
+	];
 
 	let nextKey = 0;
 
 	export function newCreditRow(c?: Partial<Omit<CreditRow, "key">>): CreditRow {
 		return {
 			key: nextKey++,
-			role: c?.role ?? "",
 			name: c?.name ?? "",
 			tmdbPersonId: c?.tmdbPersonId ?? null,
+			roles: c?.roles ? [...c.roles] : [],
 		};
 	}
 
-	/** Rows → request, in order. A row without a name is an unused line
-	 *  (e.g. a role filled in by default) and is left out. */
+	/** The server stores one credit per (person, role): fold them back into one
+	 *  row per person, in order of first appearance. */
+	export function creditRowsFromCredits(credits: LiveCredit[]): CreditRow[] {
+		const rows: CreditRow[] = [];
+		const byPerson: Record<number, CreditRow> = {};
+		for (const c of credits) {
+			let row = byPerson[c.personId];
+			if (!row) {
+				row = newCreditRow({ name: c.name, tmdbPersonId: c.tmdbPersonId });
+				byPerson[c.personId] = row;
+				rows.push(row);
+			}
+			if (!row.roles.includes(c.role)) row.roles.push(c.role);
+		}
+		return rows;
+	}
+
+	/** Default roles in their usual order, then custom ones as added: the same
+	 *  person reads "Writer · Director · Performer" whichever was ticked first. */
+	function orderedRoles(roles: string[]): string[] {
+		const known = defaultRoles.filter((r) => roles.includes(r));
+		const custom = roles.filter((r) => !defaultRoles.includes(r));
+		return [...known, ...custom];
+	}
+
+	/** Rows → request: one credit per role, rows in order. A row without a name
+	 *  is an unused line and is left out. */
 	export function creditRowsToRequest(rows: CreditRow[]): LiveCreditRequest[] {
 		return rows
 			.filter((r) => r.name.trim())
-			.map((r) => ({
-				name: r.name.trim(),
-				role: r.role.trim(),
-				tmdbPersonId: r.tmdbPersonId,
-			}));
+			.flatMap((r) =>
+				orderedRoles(r.roles)
+					.map((role) => role.trim())
+					.filter(Boolean)
+					.map((role) => ({
+						name: r.name.trim(),
+						role,
+						tmdbPersonId: r.tmdbPersonId,
+					})),
+			);
 	}
 
 	/** A message when a named row has no role; undefined when all is well. */
 	export function validateCreditRows(rows: CreditRow[]): string | undefined {
-		if (rows.some((r) => r.name.trim() && !r.role.trim()))
-			return "Each artist needs a role (Performer, Director…).";
+		if (rows.some((r) => r.name.trim() && !r.roles.some((x) => x.trim())))
+			return "Each artist needs at least one role (Performer, Director…).";
 	}
 </script>
 
@@ -50,54 +92,59 @@
 
 	let { rows = $bindable() }: Props = $props();
 
-	const defaultRoles = [
-		"Performer",
-		"Writer",
-		"Director",
-		"Choreographer",
-		"Company",
-		"Music",
-		"Translation",
-	];
-	// A <select>, not a text field with a <datalist>: the browser filters a
-	// datalist by what the field already holds, and the role is pre-filled
-	// ("Performer", or the line above's), so only that one was ever offered.
-	const OTHER = "__other";
 	const uid = $props.id();
-	// Rows the user switched to "Other…": they keep the free text field even
-	// while it's empty or happens to match a default role.
-	let otherMode: Record<number, boolean> = $state({});
-
-	const roleInputId = (key: number) => `${uid}-role-${key}`;
+	// Rows currently typing a role that isn't in the list ("Other…").
+	let addingOther: Record<number, boolean> = $state({});
+	let otherText: Record<number, string> = $state({});
 
 	const nameInputId = (key: number) => `${uid}-name-${key}`;
+	const otherInputId = (key: number) => `${uid}-other-${key}`;
 
 	async function add() {
-		// Same role as the line above: performers usually come in a run.
-		const role = rows.length ? rows[rows.length - 1].role : "Performer";
-		const row = newCreditRow({ role });
+		// "Performer" is by far the most common credit. Copying the line above
+		// would also copy a writer-director's roles onto the next performer.
+		const row = newCreditRow({ roles: ["Performer"] });
 		rows.push(row);
 		await tick();
 		document.getElementById(nameInputId(row.key))?.focus();
 	}
 
-	function roleChoice(row: CreditRow) {
-		if (otherMode[row.key]) return OTHER;
-		if (!row.role) return "";
-		return defaultRoles.includes(row.role) ? row.role : OTHER;
+	function toggleRole(row: CreditRow, role: string) {
+		const i = row.roles.indexOf(role);
+		if (i >= 0) row.roles.splice(i, 1);
+		else row.roles.push(role);
 	}
 
-	async function chooseRole(row: CreditRow, value: string) {
-		if (value !== OTHER) {
-			otherMode[row.key] = false;
-			row.role = value;
-			return;
-		}
-		otherMode[row.key] = true;
-		// A default role left in the field would read as already chosen.
-		if (defaultRoles.includes(row.role)) row.role = "";
+	async function startOther(row: CreditRow) {
+		addingOther[row.key] = true;
+		otherText[row.key] = "";
 		await tick();
-		document.getElementById(roleInputId(row.key))?.focus();
+		document.getElementById(otherInputId(row.key))?.focus();
+	}
+
+	function commitOther(row: CreditRow) {
+		const text = (otherText[row.key] ?? "").replace(/\s+/g, " ").trim();
+		addingOther[row.key] = false;
+		otherText[row.key] = "";
+		if (!text) return;
+		// Typed a role that's in the list: tick it rather than add a twin.
+		const known = defaultRoles.find(
+			(r) => r.toLowerCase() === text.toLowerCase(),
+		);
+		const role = known ?? text.slice(0, 100);
+		if (!row.roles.some((r) => r.toLowerCase() === role.toLowerCase()))
+			row.roles.push(role);
+	}
+
+	function otherKeydown(ev: KeyboardEvent, row: CreditRow) {
+		if (ev.key === "Enter") {
+			// Inside the show form: Enter must add the role, not submit.
+			ev.preventDefault();
+			commitOther(row);
+		} else if (ev.key === "Escape") {
+			addingOther[row.key] = false;
+			otherText[row.key] = "";
+		}
 	}
 
 	function remove(i: number) {
@@ -119,30 +166,6 @@
 		<ol>
 			{#each rows as row, i (row.key)}
 				<li>
-					<div class="role">
-						<select
-							aria-label="Role"
-							value={roleChoice(row)}
-							onchange={(e) => chooseRole(row, e.currentTarget.value)}
-						>
-							<option value="" disabled>Role</option>
-							{#each defaultRoles as r (r)}
-								<option value={r}>{r}</option>
-							{/each}
-							<option value={OTHER}>Other…</option>
-						</select>
-						{#if roleChoice(row) === OTHER}
-							<input
-								id={roleInputId(row.key)}
-								type="text"
-								bind:value={row.role}
-								placeholder="Role"
-								aria-label="Other role"
-								autocomplete="off"
-								maxlength={100}
-							/>
-						{/if}
-					</div>
 					<div class="name">
 						<ArtistSuggest
 							id={nameInputId(row.key)}
@@ -205,6 +228,54 @@
 							<Icon i="close" wh={14} />
 						</button>
 					</div>
+					<div class="roles" role="group" aria-label="Roles">
+						{#each defaultRoles as r (r)}
+							<button
+								type="button"
+								class="chip"
+								aria-pressed={row.roles.includes(r)}
+								onclick={() => toggleRole(row, r)}
+							>
+								{r}
+							</button>
+						{/each}
+						{#each row.roles.filter((r) => !defaultRoles.includes(r)) as r (r)}
+							<span class="chip custom">
+								{r}
+								<button
+									type="button"
+									class="plain"
+									aria-label={`Remove the role ${r}`}
+									title="Remove this role"
+									onclick={() => toggleRole(row, r)}
+								>
+									×
+								</button>
+							</span>
+						{/each}
+						{#if addingOther[row.key]}
+							<input
+								id={otherInputId(row.key)}
+								class="other-input"
+								type="text"
+								bind:value={otherText[row.key]}
+								placeholder="Other role"
+								aria-label="Other role"
+								autocomplete="off"
+								maxlength={100}
+								onkeydown={(ev) => otherKeydown(ev, row)}
+								onblur={() => commitOther(row)}
+							/>
+						{:else}
+							<button
+								type="button"
+								class="chip other"
+								onclick={() => startOther(row)}
+							>
+								Other…
+							</button>
+						{/if}
+					</div>
 				</li>
 			{/each}
 		</ol>
@@ -242,59 +313,77 @@
 		list-style: none;
 	}
 
+	// Name and its buttons on one line, the person's roles underneath.
 	li {
 		display: grid;
-		grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 6px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid $bg-color-accent;
 
-		// On a phone: role and name stacked, the buttons beside them.
-		@media (max-width: 500px) {
-			grid-template-columns: minmax(0, 1fr) auto;
-			padding-bottom: 8px;
-			border-bottom: 1px solid $bg-color-accent;
-
-			.role {
-				grid-column: 1;
-				grid-row: 1;
-			}
-			.name {
-				grid-column: 1;
-				grid-row: 2;
-			}
-			.row-actions {
-				grid-column: 2;
-				grid-row: 1 / span 2;
-				flex-flow: column;
-			}
+		.roles {
+			grid-column: 1 / -1;
 		}
 	}
 
-	.role {
+	.roles {
 		display: flex;
-		flex-flow: column;
-		gap: 4px;
-		min-width: 0;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 5px;
+	}
 
-		select,
-		input {
-			width: 100%;
-			color: $text-color;
-			background-color: transparent;
-			border-color: $text-color;
-		}
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		width: auto;
+		padding: 3px 10px;
+		border: 1px solid $text-color-accent;
+		border-radius: 12px;
+		background-color: transparent;
+		font-size: 13px;
+		color: $text-color;
 
-		// No global select style: match the inputs around it.
-		select {
-			padding: 7px 10px;
-			border: 2px solid $text-color;
-			border-radius: 5px;
-			font: inherit;
-
-			:global(:root.theme-dark) & {
-				color-scheme: dark;
+		// Hover only tints: a pressed role is filled, so the two never look
+		// alike (on touch, hover sticks to the last tapped chip).
+		@media (hover: hover) {
+			&:hover {
+				background-color: $bg-color-accent;
 			}
 		}
+
+		&[aria-pressed="true"],
+		&.custom {
+			border-color: $text-color;
+			background-color: $text-color;
+			color: $bg-color;
+		}
+
+		&.custom {
+			padding-right: 2px;
+
+			button {
+				padding: 0 6px;
+				font-size: 14px;
+				line-height: 1;
+				color: $bg-color;
+			}
+		}
+
+		&.other {
+			border-style: dashed;
+		}
+	}
+
+	.other-input {
+		width: 160px;
+		padding: 3px 10px;
+		font-size: 13px;
+		color: $text-color;
+		background-color: transparent;
+		border-color: $text-color;
 	}
 
 	.name {
