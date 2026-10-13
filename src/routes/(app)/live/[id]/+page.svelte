@@ -6,6 +6,7 @@
 	import Error from "@/lib/Error.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
+	import LivePoster from "@/lib/live/LivePoster.svelte";
 	import LiveShowForm from "@/lib/live/LiveShowForm.svelte";
 	import {
 		deleteShow,
@@ -120,22 +121,33 @@
 				onCancel={() => (editing = false)}
 			/>
 		{:else}
-			<div class="state" data-state={show.state}>
-				{stateLabels[show.state]}
+			<div class="top">
+				{#if show.poster}
+					<div class="poster"><LivePoster poster={show.poster} /></div>
+				{/if}
+				<div class="info">
+					<div class="state" data-state={show.state}>
+						{stateLabels[show.state]}
+					</div>
+					<h2 class="title">{show.title}</h2>
+					<p class="when">{formatShowDate(show.date)}</p>
+					{#if show.venue}
+						<p class="venue">{show.venue}</p>
+					{/if}
+					{#if show.url}
+						<p class="link">
+							<a
+								href={show.url}
+								target="_blank"
+								rel="external noreferrer noopener"
+							>
+								<Icon i="website" wh={16} />
+								<span>{show.url}</span>
+							</a>
+						</p>
+					{/if}
+				</div>
 			</div>
-			<h2 class="title">{show.title}</h2>
-			<p class="when">{formatShowDate(show.date)}</p>
-			{#if show.venue}
-				<p class="venue">{show.venue}</p>
-			{/if}
-			{#if show.url}
-				<p class="link">
-					<a href={show.url} target="_blank" rel="external noreferrer noopener">
-						<Icon i="website" wh={16} />
-						<span>{show.url}</span>
-					</a>
-				</p>
-			{/if}
 			{#if show.description}
 				<p class="description">{show.description}</p>
 			{/if}
@@ -144,14 +156,18 @@
 				<button onclick={() => (editing = true)} disabled={busy}>
 					<Icon i="pencil" wh={16} /> Edit
 				</button>
-				<button
-					onclick={toggleMissed}
-					disabled={busy}
-					aria-pressed={show.missed}
-					title="For a show you booked but didn't attend (cancelled, couldn't make it…)"
-				>
-					{show.missed ? "Undo “Didn't go”" : "Didn't go"}
-				</button>
+				<!-- Only once the date has passed: not going to a show still to
+				  come isn't a thing yet. -->
+				{#if show.state !== "upcoming"}
+					<button
+						onclick={toggleMissed}
+						disabled={busy}
+						aria-pressed={show.missed}
+						title="For a show you booked but didn't attend (cancelled, couldn't make it…)"
+					>
+						{show.missed ? "Undo “Didn't go”" : "Didn't go"}
+					</button>
+				{/if}
 				{#if confirmingDelete}
 					<button class="danger" onclick={remove} disabled={busy}>
 						Confirm delete
@@ -184,6 +200,28 @@
 			width: 100%;
 			max-width: 600px;
 			padding: 0 15px 60px 15px;
+		}
+	}
+
+	.top {
+		display: flex;
+		flex-flow: row;
+		align-items: flex-start;
+		gap: 16px;
+
+		.poster {
+			flex: 0 0 140px;
+			width: 140px;
+
+			@media (max-width: 420px) {
+				flex-basis: 100px;
+				width: 100px;
+			}
+		}
+
+		.info {
+			flex: 1 1 auto;
+			min-width: 0;
 		}
 	}
 
