@@ -6,9 +6,12 @@
 	interface Props {
 		/** The stored poster; a neutral placeholder is drawn without one. */
 		poster?: LiveShowPoster;
+		/** CSS aspect-ratio of the box: a poster by default, "1 / 1" for
+		 *  photo thumbnails (cropped to fill). */
+		ratio?: string;
 	}
 
-	let { poster }: Props = $props();
+	let { poster, ratio = "2 / 3" }: Props = $props();
 
 	// Small on purpose: the blurhash is stretched to the box by CSS.
 	const BH_W = 20;
@@ -41,7 +44,7 @@
 	});
 </script>
 
-<div class="live-poster">
+<div class="live-poster" style:aspect-ratio={ratio}>
 	{#if src && !failed}
 		{#if !loaded && poster?.blurHash}
 			<canvas width={BH_W} height={BH_H} bind:this={bhCanvas}></canvas>
@@ -61,7 +64,6 @@
 	.live-poster {
 		position: relative;
 		width: 100%;
-		aspect-ratio: 2 / 3;
 		overflow: hidden;
 		border-radius: 6px;
 		background-color: $bg-color-accent;
