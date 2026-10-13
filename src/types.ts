@@ -966,3 +966,31 @@ export interface TagAddRequest {
 	color: string;
 	bgColor: string;
 }
+
+// Live shows (theatre, dance…): a fork-only notebook, unrelated to TMDB media.
+export type LiveShowState = "upcoming" | "seen" | "missed";
+
+export interface LiveShow {
+	id: number;
+	title: string;
+	venue: string;
+	url: string;
+	description: string;
+	/** RFC3339 date-time of the booked/attended performance. */
+	date: string;
+	missed: boolean;
+	/** Computed by the server: upcoming until the date passes, then seen, unless missed. */
+	state: LiveShowState;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface LiveShowRequest {
+	title: string;
+	venue: string;
+	url: string;
+	description: string;
+	/** RFC3339. */
+	date: string;
+	missed?: boolean;
+}
