@@ -33,6 +33,12 @@ func (r *Router) AddRoutes() {
 	shows.POST("", r.Create)
 	shows.PUT("/:id", r.Update)
 	shows.DELETE("/:id", r.Delete)
+
+	people := live.Group("/people")
+	people.GET("", r.People)
+	people.GET("/by-tmdb/:tmdbId", r.PersonByTmdb)
+	people.GET("/:id", r.Person)
+	people.PUT("/:id", r.UpdatePerson)
 }
 
 // respondError maps service errors to their status. Anything unexpected is a
@@ -46,6 +52,8 @@ func respondError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadGateway, router.ErrorResponse{Error: errUnreadable.Error()})
 	case errors.Is(err, ErrNotFound):
 		c.JSON(http.StatusNotFound, router.ErrorResponse{Error: "live show not found"})
+	case errors.Is(err, ErrPersonNotFound):
+		c.JSON(http.StatusNotFound, router.ErrorResponse{Error: ErrPersonNotFound.Error()})
 	default:
 		c.JSON(http.StatusInternalServerError, router.ErrorResponse{Error: "internal error"})
 	}
@@ -53,9 +61,14 @@ func respondError(c *gin.Context, err error) {
 
 // showId reads `:id`, writing the 400 itself when it is not a positive integer.
 func showId(c *gin.Context) (uint, bool) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 0)
+	return positiveParam(c, "id")
+}
+
+func positiveParam(c *gin.Context, name string) (uint, bool) {
+	// 31 bits: TMDB ids are stored as int, and must fit on 32-bit builds.
+	id, err := strconv.ParseUint(c.Param(name), 10, 31)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "id must be a positive integer"})
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: name + " must be a positive integer"})
 		return 0, false
 	}
 	return uint(id), true
@@ -148,4 +161,60 @@ func (r *Router) Prefill(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, p)
+}
+
+func (r *Router) People(c *gin.Context) {
+	people, err := r.service.People(c.MustGet("userId").(uint), c.Query("q"))
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, people)
+}
+
+func (r *Router) Person(c *gin.Context) {
+	id, ok := positiveParam(c, "id")
+	if !ok {
+		return
+	}
+	p, err := r.service.Person(c.MustGet("userId").(uint), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, p)
+}
+
+func (r *Router) UpdatePerson(c *gin.Context) {
+	id, ok := positiveParam(c, "id")
+	if !ok {
+		return
+	}
+	var req domain.LivePersonUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("live: UpdatePerson ShouldBindJSON failed", "error", err)
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+	p, err := r.service.UpdatePerson(c.MustGet("userId").(uint), id, req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, p)
+}
+
+// PersonByTmdb answers 200 with a null person rather than 404: "never seen on
+// stage" is the usual case on a TMDB person page, not an error.
+func (r *Router) PersonByTmdb(c *gin.Context) {
+	tmdbId, ok := positiveParam(c, "tmdbId")
+	if !ok {
+		return
+	}
+	p, err := r.service.PersonByTmdb(c.MustGet("userId").(uint), int(tmdbId))
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, domain.LivePersonByTmdb{Person: p})
 }
