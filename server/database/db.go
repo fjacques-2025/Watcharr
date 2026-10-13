@@ -61,6 +61,8 @@ func Setup(db *gorm.DB) error {
 		&entity.Tag{},
 		// Fork: live shows, own `live_` tables.
 		&entity.LiveShow{},
+		&entity.LivePerson{},
+		&entity.LiveCredit{},
 	)
 	if err != nil {
 		slog.Error("Setup: Auto migration failed.")

@@ -30,6 +30,16 @@ type LiveShowRequest struct {
 	// Where to download the poster from. Empty: no poster. Same as the stored
 	// one: kept without downloading again.
 	PosterURL string `json:"posterUrl"`
+	// Absent or null: credits unchanged (none on create). Present, even
+	// empty: replaces them all, in this order.
+	Credits *[]LiveCreditRequest `json:"credits"`
+}
+
+type LiveCreditRequest struct {
+	Name string `json:"name"`
+	Role string `json:"role"`
+	// Set when the user picked a TMDB person; links the artist to it.
+	TmdbPersonID *int `json:"tmdbPersonId"`
 }
 
 type LiveShow struct {
@@ -46,6 +56,55 @@ type LiveShow struct {
 	// Source the poster was copied from; the copy itself is Poster.
 	PosterURL string        `json:"posterUrl"`
 	Poster    *entity.Image `json:"poster,omitempty"`
+	// In entry order. Never null.
+	Credits []LiveCredit `json:"credits"`
+}
+
+type LiveCredit struct {
+	PersonID     uint   `json:"personId"`
+	Name         string `json:"name"`
+	Role         string `json:"role"`
+	TmdbPersonID *int   `json:"tmdbPersonId"`
+}
+
+type LivePerson struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	TmdbPersonID *int   `json:"tmdbPersonId"`
+}
+
+// An artist in the list, with the number of (non-deleted) shows they are in.
+type LivePersonSummary struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	TmdbPersonID *int   `json:"tmdbPersonId"`
+	ShowCount    int    `json:"showCount"`
+}
+
+// An artist's page: their shows grouped by role. Never null.
+type LivePersonDetail struct {
+	ID           uint             `json:"id"`
+	Name         string           `json:"name"`
+	TmdbPersonID *int             `json:"tmdbPersonId"`
+	Roles        []LivePersonRole `json:"roles"`
+}
+
+type LivePersonRole struct {
+	Role string `json:"role"`
+	// Most recent first.
+	Shows []LiveShow `json:"shows"`
+}
+
+// Null person: none of the user's artists is linked to this TMDB person, or
+// none of their shows is left.
+type LivePersonByTmdb struct {
+	Person *LivePersonDetail `json:"person"`
+}
+
+// Rename an artist and link/unlink TMDB (null unlinks).
+type LivePersonUpdateRequest struct {
+	Name         string `json:"name"`
+	TmdbPersonID *int   `json:"tmdbPersonId"`
 }
 
 // Fields read from a show's web page, to prefill the form. The text fields are

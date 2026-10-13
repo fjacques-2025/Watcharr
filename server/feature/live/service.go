@@ -1,8 +1,8 @@
 // Package live is the user's notebook of live shows (theatre, dance...).
 //
 // Step 1: shows entered by hand. Step 2: prefill from the show's page and a
-// local copy of the poster. Credits, friends and photos come later, in their
-// own `live_` tables.
+// local copy of the poster. Step 3: credits and artists (people.go). Friends
+// and photos come later, in their own `live_` tables.
 package live
 
 import (
@@ -32,7 +32,8 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db, now: time.Now, fetch: newFetcher()}
 }
 
-func (s *Service) toDto(e *entity.LiveShow, now time.Time) domain.LiveShow {
+// credits must be non-nil (see creditsFor).
+func (s *Service) toDto(e *entity.LiveShow, now time.Time, credits []domain.LiveCredit) domain.LiveShow {
 	return domain.LiveShow{
 		ID:          e.ID,
 		Title:       e.Title,
@@ -46,6 +47,7 @@ func (s *Service) toDto(e *entity.LiveShow, now time.Time) domain.LiveShow {
 		UpdatedAt:   e.UpdatedAt,
 		PosterURL:   e.PosterURL,
 		Poster:      e.Poster,
+		Credits:     credits,
 	}
 }
 
@@ -59,12 +61,7 @@ func (s *Service) List(userId uint) ([]domain.LiveShow, error) {
 		slog.Error("live: List failed", "user_id", userId, "error", res.Error)
 		return nil, res.Error
 	}
-	now := s.now()
-	out := make([]domain.LiveShow, 0, len(rows))
-	for i := range rows {
-		out = append(out, s.toDto(&rows[i], now))
-	}
-	return out, nil
+	return s.toDtos(rows)
 }
 
 func (s *Service) find(userId, id uint) (*entity.LiveShow, error) {
@@ -85,7 +82,7 @@ func (s *Service) Get(userId, id uint) (domain.LiveShow, error) {
 	if err != nil {
 		return domain.LiveShow{}, err
 	}
-	return s.toDto(e, s.now()), nil
+	return s.toDtoWithCredits(e)
 }
 
 func (s *Service) Create(userId uint, r domain.LiveShowRequest) (domain.LiveShow, error) {
@@ -117,13 +114,19 @@ func (s *Service) Create(userId uint, r domain.LiveShowRequest) (domain.LiveShow
 			}
 		}
 		// The image row is written by the saver; GORM must not upsert it.
-		return tx.Omit(clause.Associations).Create(&e).Error
+		if err := tx.Omit(clause.Associations).Create(&e).Error; err != nil {
+			return err
+		}
+		if f.Credits != nil {
+			return replaceCredits(tx, userId, e.ID, *f.Credits)
+		}
+		return nil
 	})
 	if err != nil {
-		slog.Error("live: Create failed", "user_id", userId, "error", err)
+		logUnlessInvalid("live: Create failed", err, "user_id", userId)
 		return domain.LiveShow{}, err
 	}
-	return s.toDto(&e, s.now()), nil
+	return s.toDtoWithCredits(&e)
 }
 
 // Update replaces every editable field, `missed` included.
@@ -165,13 +168,19 @@ func (s *Service) Update(userId, id uint, r domain.LiveShowRequest) (domain.Live
 		}
 		// Save writes zero values too, which a full replace needs (clearing
 		// the venue, un-marking missed, dropping the poster).
-		return tx.Omit(clause.Associations).Save(e).Error
+		if err := tx.Omit(clause.Associations).Save(e).Error; err != nil {
+			return err
+		}
+		if f.Credits != nil {
+			return replaceCredits(tx, userId, e.ID, *f.Credits)
+		}
+		return nil
 	})
 	if err != nil {
 		slog.Error("live: Update failed", "user_id", userId, "id", id, "error", err)
 		return domain.LiveShow{}, err
 	}
-	return s.toDto(e, s.now()), nil
+	return s.toDtoWithCredits(e)
 }
 
 func (s *Service) Delete(userId, id uint) error {
@@ -184,4 +193,14 @@ func (s *Service) Delete(userId, id uint) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// logUnlessInvalid logs real failures only: a rejected credit (homonym linked
+// to another TMDB person) is the user's to fix, not an error of ours.
+func logUnlessInvalid(msg string, err error, args ...any) {
+	var verr *ValidationError
+	if errors.As(err, &verr) {
+		return
+	}
+	slog.Error(msg, append(args, "error", err)...)
 }
