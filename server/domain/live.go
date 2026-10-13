@@ -79,6 +79,9 @@ type LivePersonSummary struct {
 	Name         string `json:"name"`
 	TmdbPersonID *int   `json:"tmdbPersonId"`
 	ShowCount    int    `json:"showCount"`
+	// Distinct roles held in the user's non-deleted shows, alphabetical (the
+	// client orders them for display). Never null.
+	Roles []string `json:"roles" gorm:"-"`
 }
 
 // An artist's page: their shows grouped by role. Never null.

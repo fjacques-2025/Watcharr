@@ -489,7 +489,7 @@ func TestPeopleHTTPContract(t *testing.T) {
 	w = do(e, "GET", "/api/live/people", "")
 	var list []map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &list)
-	if len(list) != 3 || keysOf(list[0]) != "id,name,showCount,tmdbPersonId" {
+	if len(list) != 3 || keysOf(list[0]) != "id,name,roles,showCount,tmdbPersonId" {
 		t.Errorf("people = %s", w.Body)
 	}
 	if w := do(e, "GET", "/api/live/people?q=elise", ""); !strings.Contains(w.Body.String(), "Élise") || strings.Contains(w.Body.String(), "Paul") {
@@ -550,4 +550,36 @@ func keysOf(m map[string]any) string {
 	}
 	sort.Strings(keys)
 	return strings.Join(keys, ",")
+}
+
+func TestPeopleListsTheirRoles(t *testing.T) {
+	s := newTestService(t)
+	createWith(t, s, 1, "A", "2026-11-05T20:00:00Z",
+		cr("Élise Martin", "Mise en scène", nil), cr("Élise Martin", "Interprète", nil), cr("bob", "Texte", nil))
+	createWith(t, s, 1, "B", "2026-11-06T20:00:00Z", cr("Élise Martin", "Interprète", nil))
+	gone := createWith(t, s, 1, "C", "2026-11-07T20:00:00Z", cr("bob", "Musique", nil))
+	if err := s.Delete(1, gone.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Another user's credits for the same name never leak into the roles.
+	createWith(t, s, 2, "D", "2026-11-08T20:00:00Z", cr("bob", "Chorégraphie", nil))
+
+	people, err := s.People(1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, p := range people {
+		if p.Roles == nil {
+			t.Errorf("%s: roles must be [] rather than null", p.Name)
+		}
+		got[p.Name] = strings.Join(p.Roles, "|")
+	}
+	// Distinct, alphabetical; a role only held in a deleted show is gone.
+	if got["Élise Martin"] != "Interprète|Mise en scène" {
+		t.Errorf("Élise Martin roles = %q", got["Élise Martin"])
+	}
+	if got["bob"] != "Texte" {
+		t.Errorf("bob roles = %q", got["bob"])
+	}
 }
