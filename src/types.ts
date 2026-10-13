@@ -967,10 +967,21 @@ export interface LiveShow {
 	/** RFC3339 date-time of the booked/attended performance. */
 	date: string;
 	missed: boolean;
-	/** Computed by the server: upcoming until the date passes, then seen, unless missed. */
+	/** Computed by the server: upcoming while the date is in the future
+	 *  (whatever `missed` says), then missed or seen. */
 	state: LiveShowState;
+	/** The remote address the stored poster was taken from; "" when none. */
+	posterUrl: string;
+	/** The locally stored copy of the poster, absent when there is none. */
+	poster?: LiveShowPoster;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface LiveShowPoster {
+	path: string;
+	blurHash: string;
+	createdAt: string;
 }
 
 export interface LiveShowRequest {
@@ -981,4 +992,17 @@ export interface LiveShowRequest {
 	/** RFC3339. */
 	date: string;
 	missed?: boolean;
+	/** PUT replaces it: "" removes the poster, the stored value keeps it, a
+	 *  new address makes the server download and store that image. */
+	posterUrl: string;
+}
+
+/** What the server could read from a show's page; "" for anything unknown. */
+export interface LiveShowPrefill {
+	/** The final address, after redirects. */
+	url: string;
+	title: string;
+	description: string;
+	venue: string;
+	posterUrl: string;
 }

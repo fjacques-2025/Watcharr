@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { LiveShow, LiveShowRequest } from "@/types";
-	import { errorText } from "./api";
+	import { errorText, prefillFromLink } from "./api";
 	import { fromLocalInput, toLocalInput } from "./date";
 
 	interface Props {
@@ -24,9 +24,27 @@
 	let venue = $state(seed?.venue ?? "");
 	let url = $state(seed?.url ?? "");
 	let description = $state(seed?.description ?? "");
+	// Edit mode starts from the stored address: saving unchanged keeps the
+	// poster, clearing it removes it.
+	let posterUrl = $state(seed?.posterUrl ?? "");
 	let saving = $state(false);
 	let error: string | undefined = $state();
 
+	// "Fill from link" — only offered when adding a show.
+	let pageLink = $state("");
+	let prefilling = $state(false);
+	let prefillError: string | undefined = $state();
+
+	// The preview hides itself once its address has failed to load; keyed by
+	// address so editing the field gives the new one a chance.
+	let failedPreview = $state("");
+	let previewSrc = $derived(
+		isHttpUrl(posterUrl.trim()) && failedPreview !== posterUrl.trim()
+			? posterUrl.trim()
+			: "",
+	);
+
+	// A function declaration (hoisted), so the $derived above may call it.
 	function isHttpUrl(s: string) {
 		try {
 			const u = new URL(s);
@@ -43,6 +61,40 @@
 		if (!fromLocalInput(date)) return "A date and time are required.";
 		if (url.trim() && !isHttpUrl(url.trim()))
 			return "The link must be a full http(s) address.";
+		if (posterUrl.trim() && !isHttpUrl(posterUrl.trim()))
+			return "The poster image URL must be a full http(s) address.";
+	}
+
+	async function prefill() {
+		if (prefilling) return;
+		const link = pageLink.trim();
+		if (!isHttpUrl(link)) {
+			prefillError = "Paste the full http(s) address of the show's page.";
+			return;
+		}
+		prefilling = true;
+		prefillError = undefined;
+		try {
+			const r = await prefillFromLink(link);
+			// Only empty fields: what the user typed wins over what was read.
+			// The date stays theirs to enter, pages often list many.
+			if (!title.trim() && r.title) title = r.title;
+			if (!description.trim() && r.description) description = r.description;
+			if (!venue.trim() && r.venue) venue = r.venue;
+			if (!url.trim()) url = r.url || link;
+			if (!posterUrl.trim() && r.posterUrl) posterUrl = r.posterUrl;
+		} catch (err) {
+			console.error("LiveShowForm: prefill failed", err);
+			prefillError = errorText(err);
+		} finally {
+			prefilling = false;
+		}
+	}
+
+	function prefillOnEnter(ev: KeyboardEvent) {
+		if (ev.key !== "Enter" || ev.isComposing) return;
+		ev.preventDefault();
+		prefill();
 	}
 
 	async function submit(ev: SubmitEvent) {
@@ -58,6 +110,7 @@
 				url: url.trim(),
 				description: description.trim(),
 				date: fromLocalInput(date)!,
+				posterUrl: posterUrl.trim(),
 			});
 		} catch (err) {
 			console.error("LiveShowForm: submit failed", err);
@@ -67,6 +120,41 @@
 		}
 	}
 </script>
+
+{#if !seed}
+	<div class="prefill">
+		<label for="live-prefill-link">Link to the show's page</label>
+		<div class="row">
+			<input
+				id="live-prefill-link"
+				type="url"
+				bind:value={pageLink}
+				onkeydown={prefillOnEnter}
+				placeholder="https://"
+				inputmode="url"
+				autocomplete="off"
+			/>
+			<button
+				type="button"
+				class="fill"
+				onclick={prefill}
+				disabled={prefilling}
+				aria-busy={prefilling}
+			>
+				{#if prefilling}<span class="mini-spinner" aria-hidden="true"
+					></span>{/if}
+				Fill from link
+			</button>
+		</div>
+		{#if prefillError}
+			<p class="error" role="alert">{prefillError}</p>
+		{:else}
+			<p class="help">
+				Optional: fills in what the page says, you can then adjust.
+			</p>
+		{/if}
+	</div>
+{/if}
 
 <form class="live-form" onsubmit={submit} novalidate>
 	<label>
@@ -91,6 +179,30 @@
 			autocomplete="off"
 		/>
 	</label>
+	<div class="poster-field">
+		<label>
+			<span>Poster image URL</span>
+			<input
+				type="url"
+				bind:value={posterUrl}
+				placeholder="https://"
+				inputmode="url"
+				autocomplete="off"
+			/>
+		</label>
+		<p class="help">
+			Tip: right-click the poster on the theatre's page → Copy image address.
+		</p>
+		{#if previewSrc}
+			<img
+				class="preview"
+				src={previewSrc}
+				alt="Poster preview"
+				referrerpolicy="no-referrer"
+				onerror={() => (failedPreview = previewSrc)}
+			/>
+		{/if}
+	</div>
 	<label>
 		<span>Description</span>
 		<textarea bind:value={description} rows={6} maxlength={5000}></textarea>
@@ -111,6 +223,75 @@
 </form>
 
 <style lang="scss">
+	// Global inputs are black-bordered on any theme; follow the textarea's
+	// lead so they stay visible in dark mode.
+	.prefill input,
+	.live-form input {
+		color: $text-color;
+		background-color: transparent;
+		border-color: $text-color;
+	}
+
+	.help {
+		font-size: 13px;
+		color: $text-color-accent;
+	}
+
+	.error {
+		padding: 8px 10px;
+		border-radius: 8px;
+		color: white;
+		background-color: $error;
+	}
+
+	.prefill {
+		display: flex;
+		flex-flow: column;
+		gap: 5px;
+		margin-bottom: 18px;
+		padding-bottom: 18px;
+		border-bottom: 1px solid $bg-color-accent;
+
+		label {
+			font-size: 14px;
+			font-weight: bold;
+		}
+
+		.row {
+			display: flex;
+			flex-flow: row;
+			gap: 8px;
+
+			input {
+				flex: 1 1 auto;
+				min-width: 0;
+			}
+
+			.fill {
+				flex: 0 0 auto;
+				gap: 6px;
+				width: auto;
+				white-space: nowrap;
+			}
+		}
+	}
+
+	.mini-spinner {
+		display: inline-block;
+		width: 12px;
+		height: 12px;
+		border: 2px solid currentColor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: live-spin 700ms linear infinite;
+	}
+
+	@keyframes live-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
 	.live-form {
 		display: flex;
 		flex-flow: column;
@@ -127,12 +308,7 @@
 			}
 		}
 
-		// Global inputs are black-bordered on any theme; follow the textarea's
-		// lead so they stay visible in dark mode.
 		input {
-			color: $text-color;
-			background-color: transparent;
-			border-color: $text-color;
 			// The app's theme is a class, not the OS setting, so the native
 			// date picker (icon and popup) must be told explicitly.
 			:global(:root.theme-dark) & {
@@ -145,11 +321,18 @@
 			font: inherit;
 		}
 
-		.error {
-			padding: 8px 10px;
-			border-radius: 8px;
-			color: white;
-			background-color: $error;
+		.poster-field {
+			display: flex;
+			flex-flow: column;
+			gap: 5px;
+
+			.preview {
+				width: 90px;
+				aspect-ratio: 2 / 3;
+				object-fit: cover;
+				border-radius: 6px;
+				background-color: $bg-color-accent;
+			}
 		}
 
 		.actions {
