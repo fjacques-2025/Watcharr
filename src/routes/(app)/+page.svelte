@@ -184,6 +184,11 @@
 		<Icon i="ticket" wh={18} /> In Theatres
 		<Icon i="chevron" facing="right" wh={13} />
 	</a>
+	<!-- Fork-only, like In Theatres: same detached link shape, same reason. -->
+	<a class="intheatres" href={resolve("/live")}>
+		<Icon i="calendar" wh={18} /> Live shows
+		<Icon i="chevron" facing="right" wh={13} />
+	</a>
 </div>
 
 {#if !isTypeOnly("movie")}
