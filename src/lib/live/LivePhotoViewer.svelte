@@ -291,7 +291,7 @@
 						type="text"
 						bind:value={draft}
 						placeholder="Add a caption"
-						maxlength={500}
+						maxlength={300}
 						autocomplete="off"
 					/>
 					{#if captionChanged}
