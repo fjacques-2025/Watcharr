@@ -1,13 +1,9 @@
 <script lang="ts">
 	import { onDestroy, onMount } from "svelte";
-	import Icon from "@/lib/Icon.svelte";
-	import type { LivePersonSummary } from "@/types";
-	import {
-		listPeople,
-		searchTmdbPeople,
-		type ArtistPick,
-		type TmdbPersonHit,
-	} from "./api";
+	import { resolve } from "$app/paths";
+	import type { LivePersonSummary, TmdbPersonCandidate } from "@/types";
+	import TmdbCandidate from "./TmdbCandidate.svelte";
+	import { listPeople, searchTmdbPeople, type ArtistPick } from "./api";
 
 	interface Props {
 		/** What the field holds; free text is fine, picking replaces it. */
@@ -44,12 +40,12 @@
 
 	type Option =
 		| { kind: "notebook"; p: LivePersonSummary }
-		| { kind: "tmdb"; p: TmdbPersonHit };
+		| { kind: "tmdb"; p: TmdbPersonCandidate };
 
 	let inputEl: HTMLInputElement | undefined = $state();
 	let open = $state(false);
 	let notebook: LivePersonSummary[] = $state([]);
-	let tmdb: TmdbPersonHit[] = $state([]);
+	let tmdb: TmdbPersonCandidate[] = $state([]);
 	let loadingNotebook = $state(false);
 	let loadingTmdb = $state(false);
 	let tmdbFailed = $state(false);
@@ -58,9 +54,7 @@
 	// A TMDB person already in the notebook is offered there, with its count:
 	// listing it twice would only invite a second, unlinked pick.
 	let tmdbShown = $derived(
-		tmdb.filter(
-			(h) => !notebook.some((n) => n.tmdbPersonId === h.tmdbPersonId),
-		),
+		tmdb.filter((h) => !notebook.some((n) => n.tmdbPersonId === h.tmdbId)),
 	);
 	let options: Option[] = $derived([
 		...notebook.map((p) => ({ kind: "notebook" as const, p })),
@@ -148,7 +142,7 @@
 	function pick(o: Option) {
 		const p: ArtistPick = {
 			name: o.p.name,
-			tmdbPersonId: o.p.tmdbPersonId,
+			tmdbPersonId: o.kind === "tmdb" ? o.p.tmdbId : o.p.tmdbPersonId,
 		};
 		clearTimeout(timer);
 		ctrl?.abort();
@@ -189,8 +183,15 @@
 				// Inside a form, Enter would submit it: with the list open it
 				// picks the highlighted suggestion, or just closes the list.
 				ev.preventDefault();
-				if (active >= 0 && options[active]) pick(options[active]);
-				else close();
+				// Ctrl/Cmd+Enter on a TMDB person checks their page (new tab)
+				// without picking them: the keyboard twin of the eye button.
+				{
+					const o = active >= 0 ? options[active] : undefined;
+					if (o?.kind === "tmdb" && (ev.ctrlKey || ev.metaKey))
+						window.open(resolve(`/person/${o.p.tmdbId}`), "_blank", "noopener");
+					else if (o) pick(o);
+					else close();
+				}
 				break;
 			case "Escape":
 				if (!showList) return;
@@ -274,26 +275,19 @@
 			{/if}
 			{#if tmdbShown.length}
 				<div class="group" role="presentation">TMDB</div>
-				{#each tmdbShown as p, j (p.tmdbPersonId)}
+				{#each tmdbShown as p, j (p.tmdbId)}
 					{@const i = notebook.length + j}
 					<!-- Keyboard is handled by the input (combobox pattern). -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div
-						class="option"
+						class="option tmdb"
 						id={optionId(i)}
 						role="option"
 						tabindex="-1"
 						aria-selected={active === i}
 						onclick={() => pick({ kind: "tmdb", p })}
 					>
-						<span class="photo">
-							{#if p.photo}
-								<img src={p.photo} alt="" loading="lazy" />
-							{:else}
-								<Icon i="person" wh={18} />
-							{/if}
-						</span>
-						<span class="name">{p.name}</span>
+						<TmdbCandidate c={p} />
 					</div>
 				{/each}
 			{/if}
@@ -333,7 +327,7 @@
 		top: calc(100% + 4px);
 		left: 0;
 		right: 0;
-		min-width: 220px;
+		min-width: 260px;
 		max-height: 320px;
 		overflow-y: auto;
 		padding: 4px 0;
@@ -377,23 +371,10 @@
 			color: $text-color-accent;
 		}
 
-		.photo {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex: 0 0 32px;
-			width: 32px;
-			height: 48px;
-			overflow: hidden;
-			border-radius: 4px;
-			background-color: $bg-color-accent;
-			fill: $text-color-accent;
-
-			img {
-				width: 100%;
-				height: 100%;
-				object-fit: cover;
-			}
+		// A second line (department, known for) and the photo: a bit taller.
+		&.tmdb {
+			min-height: 56px;
+			padding-right: 6px;
 		}
 
 		@media (hover: hover) {

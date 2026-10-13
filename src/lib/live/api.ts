@@ -6,9 +6,7 @@ import type {
 	LiveShow,
 	LiveShowPrefill,
 	LiveShowRequest,
-	Media,
-	PaginationResponse,
-	SearchResponseMeta,
+	TmdbPersonCandidate,
 } from "@/types";
 
 export const listShows = () => req.get<LiveShow[]>("/live/shows");
@@ -54,14 +52,6 @@ export const getPersonByTmdb = (tmdbId: number) =>
 		`/live/people/by-tmdb/${tmdbId}`,
 	);
 
-/** A TMDB person, as the suggestions show them. */
-export interface TmdbPersonHit {
-	tmdbPersonId: number;
-	name: string;
-	/** Full URL of a small profile photo; "" when TMDB has none. */
-	photo: string;
-}
-
 /** What picking a suggestion gives: the name, and the TMDB person it's
  *  linked to (null when none). */
 export interface ArtistPick {
@@ -69,28 +59,13 @@ export interface ArtistPick {
 	tmdbPersonId: number | null;
 }
 
-/** The app's existing people search (TMDB), first page only. */
-export async function searchTmdbPeople(
-	query: string,
-	signal?: AbortSignal,
-): Promise<TmdbPersonHit[]> {
-	const r = await req.get<PaginationResponse<Media, SearchResponseMeta>>(
-		"/search",
-		{ params: { type: "person", query, page: 1 }, signal },
-	);
-	const hits: TmdbPersonHit[] = [];
-	for (const m of r.results ?? []) {
-		if (!m.ids?.tmdb || !m.name) continue;
-		hits.push({
-			tmdbPersonId: m.ids.tmdb,
-			name: m.name,
-			photo: m.extPosterPath
-				? `https://image.tmdb.org/t/p/w185${m.extPosterPath}`
-				: "",
-		});
-	}
-	return hits;
-}
+/** TMDB people for a name, best first (those with films/series in the
+ *  user's list on top), at most 8; [] under 2 characters. */
+export const searchTmdbPeople = (q: string, signal?: AbortSignal) =>
+	req.get<TmdbPersonCandidate[]>("/live/tmdb-people", {
+		params: { q },
+		signal,
+	});
 
 /** The full request for an existing show: PUT replaces every field, so a
  *  partial change (like flipping `missed`) must resend the rest unchanged. */

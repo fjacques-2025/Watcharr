@@ -999,12 +999,31 @@ export interface LiveCredit {
 	name: string;
 	role: string;
 	tmdbPersonId: number | null;
+	/** The character played (on a "Performer" credit); "" when none. */
+	character: string;
 }
 
 export interface LiveCreditRequest {
 	name: string;
 	role: string;
 	tmdbPersonId?: number | null;
+	/** Only sent on a "Performer" credit. */
+	character?: string;
+}
+
+/** A TMDB person as offered when linking an artist: enough to tell
+ *  namesakes apart at a glance. */
+export interface TmdbPersonCandidate {
+	tmdbId: number;
+	name: string;
+	/** "" when none; photo at https://image.tmdb.org/t/p/w185<path>. */
+	profilePath: string;
+	/** e.g. "Acting"; "" when none. */
+	department: string;
+	/** At most 3. */
+	knownFor: { title: string; year: number | null; mediaType: "movie" | "tv" }[];
+	/** How many of their films/series are in the user's Watcharr list. */
+	inYourList: number;
 }
 
 export interface LivePersonSummary {
