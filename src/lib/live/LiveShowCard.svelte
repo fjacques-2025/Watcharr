@@ -6,9 +6,11 @@
 
 	interface Props {
 		show: LiveShow;
+		/** The character someone played in it (artist page): "as Louise". */
+		character?: string;
 	}
 
-	let { show }: Props = $props();
+	let { show, character = "" }: Props = $props();
 </script>
 
 <a class="live-card" href={resolve(`/live/${show.id}`)} data-state={show.state}>
@@ -16,6 +18,7 @@
 	<span class="text">
 		<span class="date">{formatShowDate(show.date)}</span>
 		<span class="title">{show.title}</span>
+		{#if character}<span class="character">as {character}</span>{/if}
 		{#if show.venue || show.state === "missed"}
 			<span class="meta">
 				{#if show.venue}<span class="venue">{show.venue}</span>{/if}
@@ -60,6 +63,12 @@
 		.title {
 			font-size: 16px;
 			font-weight: bold;
+			overflow-wrap: anywhere;
+		}
+
+		.character {
+			font-size: 14px;
+			font-style: italic;
 			overflow-wrap: anywhere;
 		}
 

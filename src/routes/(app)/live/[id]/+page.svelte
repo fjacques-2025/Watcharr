@@ -36,16 +36,24 @@
 	// ("Writer · Director · Performer"), people sharing the same roles on one
 	// line, in order of first appearance.
 	let creditGroups = $derived.by(() => {
-		const people: { personId: number; name: string; roles: string[] }[] = [];
+		type Person = {
+			personId: number;
+			name: string;
+			roles: string[];
+			/** The character played (from their "Performer" credit); "" if none. */
+			character: string;
+		};
+		const people: Person[] = [];
 		for (const c of show?.credits ?? []) {
 			let p = people.find((x) => x.personId === c.personId);
 			if (!p) {
-				p = { personId: c.personId, name: c.name, roles: [] };
+				p = { personId: c.personId, name: c.name, roles: [], character: "" };
 				people.push(p);
 			}
 			if (!p.roles.includes(c.role)) p.roles.push(c.role);
+			if (c.role === "Performer" && c.character) p.character = c.character;
 		}
-		const groups: [string, { personId: number; name: string }[]][] = [];
+		const groups: [string, Person[]][] = [];
 		for (const p of people) {
 			const label = p.roles.join(" · ");
 			const g = groups.find(([l]) => l === label);
@@ -179,7 +187,10 @@
 							<dd>
 								{#each people as c, i (`${c.personId}-${i}`)}
 									<a href={resolve(`/live/people/${c.personId}`)}>{c.name}</a
-									>{#if i < people.length - 1}<span class="sep">,</span>{/if}
+									>{#if c.character}<span class="character"
+											>({c.character})</span
+										>{/if}{#if i < people.length - 1}<span class="sep">,</span
+										>{/if}
 								{/each}
 							</dd>
 						</div>
@@ -329,6 +340,12 @@
 				}
 			}
 		}
+	}
+
+	.character {
+		margin-left: 0.3em;
+		font-style: italic;
+		color: $text-color-accent;
 	}
 
 	.description {
