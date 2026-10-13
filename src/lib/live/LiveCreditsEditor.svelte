@@ -9,7 +9,12 @@
 		name: string;
 		tmdbPersonId: number | null;
 		roles: string[];
+		/** The character played; only used (and sent) while "Performer" is
+		 *  ticked, but kept when it's unticked so re-ticking restores it. */
+		character: string;
 	}
+
+	const PERFORMER = "Performer";
 
 	export const defaultRoles = [
 		"Performer",
@@ -29,6 +34,7 @@
 			name: c?.name ?? "",
 			tmdbPersonId: c?.tmdbPersonId ?? null,
 			roles: c?.roles ? [...c.roles] : [],
+			character: c?.character ?? "",
 		};
 	}
 
@@ -45,6 +51,7 @@
 				rows.push(row);
 			}
 			if (!row.roles.includes(c.role)) row.roles.push(c.role);
+			if (c.role === PERFORMER && c.character) row.character = c.character;
 		}
 		return rows;
 	}
@@ -66,11 +73,18 @@
 				orderedRoles(r.roles)
 					.map((role) => role.trim())
 					.filter(Boolean)
-					.map((role) => ({
-						name: r.name.trim(),
-						role,
-						tmdbPersonId: r.tmdbPersonId,
-					})),
+					.map((role) => {
+						const credit: LiveCreditRequest = {
+							name: r.name.trim(),
+							role,
+							tmdbPersonId: r.tmdbPersonId,
+						};
+						// The character belongs to the performing, not to the
+						// person's other roles.
+						const character = r.character.trim();
+						if (role === PERFORMER && character) credit.character = character;
+						return credit;
+					}),
 			);
 	}
 
@@ -103,7 +117,7 @@
 	async function add() {
 		// "Performer" is by far the most common credit. Copying the line above
 		// would also copy a writer-director's roles onto the next performer.
-		const row = newCreditRow({ roles: ["Performer"] });
+		const row = newCreditRow({ roles: [PERFORMER] });
 		rows.push(row);
 		await tick();
 		document.getElementById(nameInputId(row.key))?.focus();
@@ -276,6 +290,19 @@
 							</button>
 						{/if}
 					</div>
+					{#if row.roles.includes(PERFORMER)}
+						<label class="character">
+							<span aria-hidden="true">as</span>
+							<input
+								type="text"
+								bind:value={row.character}
+								placeholder="Character (optional)"
+								aria-label="Character played"
+								autocomplete="off"
+								maxlength={200}
+							/>
+						</label>
+					{/if}
 				</li>
 			{/each}
 		</ol>
@@ -322,8 +349,27 @@
 		padding-bottom: 8px;
 		border-bottom: 1px solid $bg-color-accent;
 
-		.roles {
+		.roles,
+		.character {
 			grid-column: 1 / -1;
+		}
+	}
+
+	.character {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		color: $text-color-accent;
+
+		input {
+			flex: 0 1 260px;
+			min-width: 0;
+			padding: 3px 10px;
+			font-size: 13px;
+			color: $text-color;
+			background-color: transparent;
+			border-color: $text-color-accent;
 		}
 	}
 
