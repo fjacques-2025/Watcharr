@@ -84,7 +84,8 @@ func TestPrefillFixtureJoliette(t *testing.T) {
 	}
 }
 
-// No JSON-LD at all: Open Graph only.
+// No JSON-LD at all: Open Graph only, and no description declared — the
+// synopsis is read from the page.
 func TestPrefillFixtureLaCriee(t *testing.T) {
 	got := prefillFixture(t, "lacriee-boat-people.html",
 		"https://theatre-lacriee.com/programmation/evenements/boat-people")
@@ -93,11 +94,15 @@ func TestPrefillFixtureLaCriee(t *testing.T) {
 		Title:        "Boat People",
 		PosterURL:    "https://theatre-lacriee.com/storage/2026/04/17/boat-people-covercablain-10.png",
 		Performances: []string{},
-		// Checked in credits_test.go.
-		Credits: got.Credits,
+		// Checked in credits_test.go and synopsis_test.go.
+		Credits:     got.Credits,
+		Description: got.Description,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("\n got %+v\nwant %+v", got, want)
+	}
+	if got.Description == "" {
+		t.Error("the synopsis should come from the page")
 	}
 }
 
