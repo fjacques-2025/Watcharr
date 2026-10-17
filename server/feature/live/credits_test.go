@@ -33,7 +33,8 @@ func pageCredits(t *testing.T, file string) []domain.LiveCreditSuggestion {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	return parseCreditLines(parsePage(f).lines)
+	// The same path as the prefill: lines up to an "other shows" heading.
+	return parseCreditLines(ownShowLines(parsePage(f).lines))
 }
 
 func checkCredits(t *testing.T, got []domain.LiveCreditSuggestion, want string) {
@@ -108,8 +109,8 @@ Apolline Paquet: Accompagnement, Production, Diffusions
 // "Un spectacle d’Adèle Royné" (elision glued to the name), the avec line
 // ending in "et Adèle Royné", nothing from "Création Le 1er octobre 2026 -
 // Théâtre d’Arles". "Production Compagnie et diffusion Laure Duqué & …" is
-// dropped: "diffusion Laure Duqué" is not a name. "A Kan la Dériv'" is a
-// known false positive: another show's company, under "Vous aimerez aussi".
+// dropped: "diffusion Laure Duqué" is not a name. Nothing from below "Vous
+// aimerez aussi", where "Compagnie A Kan la Dériv'" belongs to another show.
 func TestCreditsLesTheatres(t *testing.T) {
 	checkCredits(t, pageCredits(t, "lestheatres-fete-des-meres.html"), `
 Adèle Royné: Director, Writer, Performer *
@@ -129,7 +130,6 @@ Aubin Hernandez: Performer *
 Florence Janas: Performer *
 Cyril Metzger: Performer *
 Cie MidiMinuit: Production
-A Kan la Dériv': Company *
 `)
 }
 
@@ -365,4 +365,23 @@ Clément Bigot: Performer *
 Charline Grand: Performer *
 Alice Gill-Kahn: Lumière
 `)
+}
+
+func TestOwnShowLinesStopsAtOtherShows(t *testing.T) {
+	lines := []string{"Avec Jeanne Martin", "Vous aimerez aussi", "Compagnie Autre Spectacle"}
+	if got := ownShowLines(lines); len(got) != 1 {
+		t.Errorf("kept %q", got)
+	}
+	// Pasted text is never cut: it is the user's own selection.
+	got, err := ParseCredits(strings.Join(lines, "\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Errorf("pasted text lost credits: %+v", got)
+	}
+	// Case and a variant heading.
+	if got := ownShowLines([]string{"x", "À DÉCOUVRIR AUSSI", "y"}); len(got) != 1 {
+		t.Errorf("variant heading not seen: %q", got)
+	}
 }

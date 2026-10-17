@@ -258,7 +258,7 @@ func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) doma
 		PosterURL:    poster(pageURL, title, m, ldImages),
 		Performances: perfs,
 		DateRange:    rng,
-		Credits:      parseCreditLines(m.lines),
+		Credits:      parseCreditLines(ownShowLines(m.lines)),
 	}
 }
 
