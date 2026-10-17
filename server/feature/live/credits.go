@@ -288,6 +288,11 @@ func parseLabel(ts []token) (labelInfo, bool) {
 			info.heading = true
 		}
 		role, known := knownLabels[key]
+		if !known && foldsMention(folds, "music") {
+			// "Design sonore et musical", "direction musicale": music, whatever
+			// words come with it.
+			role, known = "Music", true
+		}
 		if known {
 			anyKnown = true
 		} else {
@@ -351,6 +356,15 @@ func parseLabel(ts []token) (labelInfo, bool) {
 		return labelInfo{}, false
 	}
 	return info, true
+}
+
+func foldsMention(folds []string, stem string) bool {
+	for _, f := range folds {
+		if strings.HasPrefix(f, stem) {
+			return true
+		}
+	}
+	return false
 }
 
 // roleLike: a word that names a role by itself ("interprétation",
