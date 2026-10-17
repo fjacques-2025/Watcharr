@@ -88,6 +88,54 @@
 			);
 	}
 
+	/** Names compared like the server does: case, accents and extra spaces
+	 *  ignored. */
+	function foldName(s: string): string {
+		return s
+			.normalize("NFD")
+			.replace(/\p{M}/gu, "")
+			.replace(/\s+/g, " ")
+			.trim()
+			.toLocaleLowerCase();
+	}
+
+	/** Adds picked people to the rows: someone already there only gains the
+	 *  roles they lacked (their TMDB link and character are kept), anyone else
+	 *  is appended. Nothing is removed. Returns a new array and leaves the
+	 *  given rows untouched (a changed row is a copy with the same key). */
+	export function mergeIntoRows(
+		rows: CreditRow[],
+		picked: { name: string; roles: string[] }[],
+	): CreditRow[] {
+		const out = [...rows];
+		for (const p of picked) {
+			const name = p.name.replace(/\s+/g, " ").trim();
+			if (!name) continue;
+			const roles = p.roles.map((r) => r.trim()).filter(Boolean);
+			const key = foldName(name);
+			const i = out.findIndex((r) => foldName(r.name) === key);
+			if (i < 0) {
+				out.push(newCreditRow({ name, roles: dedupeRoles([], roles) }));
+				continue;
+			}
+			const row = out[i];
+			const merged = dedupeRoles(row.roles, roles);
+			if (merged.length !== row.roles.length)
+				out[i] = { ...row, roles: merged };
+		}
+		return out;
+	}
+
+	/** `base` followed by the roles of `extra` it lacks (case ignored). */
+	function dedupeRoles(base: string[], extra: string[]): string[] {
+		const out = [...base];
+		for (const role of extra) {
+			if (!out.some((x) => x.toLowerCase() === role.toLowerCase()))
+				out.push(role);
+		}
+		return out;
+	}
+
 	/** A message when a named row has no role; undefined when all is well. */
 	export function validateCreditRows(rows: CreditRow[]): string | undefined {
 		if (rows.some((r) => r.name.trim() && !r.roles.some((x) => x.trim())))
@@ -98,7 +146,10 @@
 <script lang="ts">
 	import { tick } from "svelte";
 	import Icon from "@/lib/Icon.svelte";
+	import type { LiveCreditSuggestion } from "@/types";
+	import { errorText, parseCredits } from "./api";
 	import ArtistSuggest from "./ArtistSuggest.svelte";
+	import CreditSuggestions from "./CreditSuggestions.svelte";
 
 	interface Props {
 		rows: CreditRow[];
@@ -110,6 +161,18 @@
 	// Rows currently typing a role that isn't in the list ("Other…").
 	let addingOther: Record<number, boolean> = $state({});
 	let otherText: Record<number, string> = $state({});
+
+	// "Paste a list": the text stays until the artists are added, so a
+	// dismissed reading can be fixed and read again.
+	let pasteOpen = $state(false);
+	let pasteText = $state("");
+	let reading = $state(false);
+	let pasteError: string | undefined = $state();
+	// null: not read yet (or the text changed since).
+	let pasteResult: LiveCreditSuggestion[] | null = $state(null);
+
+	const PASTE_MAX = 20000;
+	const pasteId = `${uid}-paste`;
 
 	const nameInputId = (key: number) => `${uid}-name-${key}`;
 	const otherInputId = (key: number) => `${uid}-other-${key}`;
@@ -158,6 +221,48 @@
 		} else if (ev.key === "Escape") {
 			addingOther[row.key] = false;
 			otherText[row.key] = "";
+		}
+	}
+
+	async function openPaste() {
+		pasteOpen = true;
+		await tick();
+		document.getElementById(pasteId)?.focus();
+	}
+
+	function closePaste() {
+		pasteOpen = false;
+		pasteText = "";
+		pasteError = undefined;
+		pasteResult = null;
+	}
+
+	async function readPaste() {
+		if (reading) return;
+		const text = pasteText.trim();
+		if (!text) {
+			pasteError = "Paste the names first.";
+			return;
+		}
+		reading = true;
+		pasteError = undefined;
+		pasteResult = null;
+		try {
+			const r = await parseCredits(text);
+			pasteResult = r.credits ?? [];
+		} catch (err) {
+			console.error("LiveCreditsEditor: parse-credits failed", err);
+			pasteError = errorText(err);
+		} finally {
+			reading = false;
+		}
+	}
+
+	function pasteKeydown(ev: KeyboardEvent) {
+		// Enter is a new line; Ctrl/Cmd+Enter reads. Never submits the form.
+		if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey) && !ev.isComposing) {
+			ev.preventDefault();
+			readPaste();
 		}
 	}
 
@@ -308,9 +413,65 @@
 		</ol>
 	{/if}
 
-	<button type="button" class="add" onclick={add}>
-		<Icon i="add" wh={14} /> Add an artist
-	</button>
+	<div class="add-row">
+		<button type="button" class="add" onclick={add}>
+			<Icon i="add" wh={14} /> Add an artist
+		</button>
+		{#if !pasteOpen}
+			<button type="button" class="add" onclick={openPaste}>
+				Paste a list
+			</button>
+		{/if}
+	</div>
+
+	{#if pasteOpen}
+		<div class="paste">
+			<label for={pasteId}>Paste a list of artists</label>
+			<textarea
+				id={pasteId}
+				bind:value={pasteText}
+				oninput={() => {
+					// What was read no longer matches the text.
+					pasteResult = null;
+					pasteError = undefined;
+				}}
+				onkeydown={pasteKeydown}
+				rows={5}
+				maxlength={PASTE_MAX}
+				placeholder="avec Jeanne Martin, Paul Durand&#10;mise en scène Marie Dupont"
+			></textarea>
+			{#if pasteError}
+				<p class="error" role="alert">{pasteError}</p>
+			{/if}
+			{#if pasteResult && pasteResult.length}
+				<CreditSuggestions
+					suggestions={pasteResult}
+					onAdd={(picked) => {
+						rows = mergeIntoRows(rows, picked);
+						closePaste();
+					}}
+					onDismiss={() => (pasteResult = null)}
+				/>
+			{:else}
+				{#if pasteResult}
+					<p class="help" role="status">No artists recognised in this text.</p>
+				{/if}
+				<div class="paste-actions">
+					<button type="button" class="secondary" onclick={closePaste}>
+						Cancel
+					</button>
+					<button
+						type="button"
+						onclick={readPaste}
+						disabled={reading || !pasteText.trim()}
+						aria-busy={reading}
+					>
+						{reading ? "Reading…" : "Read"}
+					</button>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </fieldset>
 
 <style lang="scss">
@@ -492,10 +653,59 @@
 		}
 	}
 
+	.add-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
 	.add {
 		gap: 6px;
 		width: auto;
-		align-self: flex-start;
 		font-size: 14px;
+	}
+
+	.paste {
+		display: flex;
+		flex-flow: column;
+		gap: 6px;
+		padding: 10px;
+		border: 1px solid $bg-color-accent;
+		border-radius: 8px;
+
+		label {
+			font-size: 14px;
+			font-weight: bold;
+		}
+
+		textarea {
+			resize: vertical;
+			font: inherit;
+			font-size: 14px;
+		}
+
+		.help {
+			font-size: 13px;
+			color: $text-color-accent;
+		}
+
+		.error {
+			padding: 8px 10px;
+			border-radius: 8px;
+			color: white;
+			background-color: $error;
+		}
+	}
+
+	.paste-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 8px;
+
+		button {
+			width: auto;
+			min-width: 100px;
+		}
 	}
 </style>

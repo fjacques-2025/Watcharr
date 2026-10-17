@@ -1,6 +1,7 @@
 import { req } from "@/lib/util/api";
 import { ReqerError } from "@/lib/util/fetch";
 import type {
+	LiveCreditSuggestion,
 	LiveFriendSummary,
 	LivePersonDetail,
 	LivePhoto,
@@ -27,6 +28,13 @@ export const deleteShow = (id: number) => req.delete(`/live/shows/${id}`);
 /** Reads a show's page on the server; what it can't find comes back "". */
 export const prefillFromLink = (url: string) =>
 	req.post<LiveShowPrefill>("/live/prefill", { url });
+
+/** Reads a pasted list of artists ("avec X, Y / mise en scène Z") on the
+ *  server; at most 20000 characters. */
+export const parseCredits = (text: string) =>
+	req.post<{ credits: LiveCreditSuggestion[] }>("/live/parse-credits", {
+		text,
+	});
 
 /** Rating, notes and friends: send only the keys being changed. */
 export const updateSouvenir = async (id: number, body: LiveSouvenirRequest) =>
