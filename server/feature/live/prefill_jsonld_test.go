@@ -93,6 +93,8 @@ func TestPrefillFixtureLaCriee(t *testing.T) {
 		Title:        "Boat People",
 		PosterURL:    "https://theatre-lacriee.com/storage/2026/04/17/boat-people-covercablain-10.png",
 		Performances: []string{},
+		// Checked in credits_test.go.
+		Credits: got.Credits,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("\n got %+v\nwant %+v", got, want)

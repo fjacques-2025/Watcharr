@@ -165,6 +165,29 @@ type LivePrefill struct {
 	// Set only when the page gives days without a time, so the user still
 	// has to pick the performance; nil otherwise.
 	DateRange *LiveDateRange `json:"dateRange"`
+	// Cast and crew read from the page's text, to offer, never to add
+	// unasked. Never null.
+	Credits []LiveCreditSuggestion `json:"credits"`
+}
+
+// A person a page or pasted text credits. Roles are the app's default roles
+// ("Performer", "Writer", "Director", "Choreographer", "Company", "Music",
+// "Translation") or the page's own label ("Lumière"), in order of
+// appearance, never null. Suggested: some role is a default one, so the
+// person is likely worth adding; technical crew is listed unchecked.
+type LiveCreditSuggestion struct {
+	Name      string   `json:"name"`
+	Roles     []string `json:"roles"`
+	Suggested bool     `json:"suggested"`
+}
+
+type LiveParseCreditsRequest struct {
+	Text string `json:"text"`
+}
+
+type LiveParseCreditsResponse struct {
+	// In order of first appearance, one per person. Never null.
+	Credits []LiveCreditSuggestion `json:"credits"`
 }
 
 // Days as YYYY-MM-DD, both inclusive.
