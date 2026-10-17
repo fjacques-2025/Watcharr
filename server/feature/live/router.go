@@ -34,6 +34,7 @@ func (r *Router) AddRoutes() {
 // route tables can't drift apart.
 func (r *Router) register(live *gin.RouterGroup) {
 	live.POST("/prefill", r.Prefill)
+	live.POST("/parse-credits", r.ParseCredits)
 	live.GET("/tmdb-people", r.TmdbPeople)
 	live.GET("/friends", r.Friends)
 
@@ -182,6 +183,23 @@ func (r *Router) Prefill(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, p)
+}
+
+// ParseCredits reads cast and crew from pasted text. Nothing is saved: the
+// user picks which suggestions to add.
+func (r *Router) ParseCredits(c *gin.Context) {
+	var req domain.LiveParseCreditsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("live: ParseCredits ShouldBindJSON failed", "error", err)
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+	credits, err := ParseCredits(req.Text)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, domain.LiveParseCreditsResponse{Credits: credits})
 }
 
 func (r *Router) People(c *gin.Context) {

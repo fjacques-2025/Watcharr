@@ -89,6 +89,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		PosterURL:   srv.URL + "/media/affiche.jpg?w=800&h=1200",
 		// Never nil, so the JSON is [] and not null.
 		Performances: []string{},
+		Credits:      []domain.LiveCreditSuggestion{},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("full page:\n got %+v\nwant %+v", got, want)
@@ -104,6 +105,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 		Description:  "From the meta description.",
 		PosterURL:    "https://cdn.example.org/poster.png",
 		Performances: []string{},
+		Credits:      []domain.LiveCreditSuggestion{},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("fallback page:\n got %+v\nwant %+v", got, want)
@@ -121,7 +123,7 @@ func TestPrefillEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prefill: %v", err)
 	}
-	if !reflect.DeepEqual(got, domain.LivePrefill{URL: srv.URL + "/empty", Performances: []string{}}) {
+	if !reflect.DeepEqual(got, domain.LivePrefill{URL: srv.URL + "/empty", Performances: []string{}, Credits: []domain.LiveCreditSuggestion{}}) {
 		t.Errorf("empty page: %+v", got)
 	}
 }
@@ -239,9 +241,9 @@ func TestPrefillHTTPContract(t *testing.T) {
 	for k, v := range obj {
 		keys = append(keys, k)
 		switch k {
-		case "performances":
+		case "performances", "credits":
 			if a, ok := v.([]any); !ok || len(a) != 0 {
-				t.Errorf("performances = %#v, want []", v)
+				t.Errorf("%s = %#v, want []", k, v)
 			}
 		case "dateRange":
 			if v != nil {
@@ -255,7 +257,7 @@ func TestPrefillHTTPContract(t *testing.T) {
 		}
 	}
 	sort.Strings(keys)
-	if strings.Join(keys, ",") != "dateRange,description,performances,posterUrl,title,url,venue" {
+	if strings.Join(keys, ",") != "credits,dateRange,description,performances,posterUrl,title,url,venue" {
 		t.Errorf("keys = %v", keys)
 	}
 

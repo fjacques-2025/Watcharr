@@ -58,6 +58,7 @@ type pageMeta struct {
 	metaDesc string // <meta name="description">
 	events   []ldEvent
 	images   []string // <img> sources in document order, for posterFromPage
+	lines    []string // visible text, one entry per block, for the credits
 }
 
 // Enough for any real show page; a gallery page needn't be read to its end.
@@ -70,12 +71,16 @@ func parsePage(r io.Reader) pageMeta {
 	m := pageMeta{props: map[string]string{}}
 	z := html.NewTokenizer(r)
 	inHead, inTitle, inLD := true, false, false
+	var text visibleText
 	for {
-		switch z.Next() {
+		tt := z.Next()
+		switch tt {
 		case html.ErrorToken:
+			m.lines = text.done()
 			return m
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name, hasAttr := z.TagName()
+			text.tag(string(name), tt == html.StartTagToken)
 			switch string(name) {
 			case "body":
 				inHead = false
@@ -94,6 +99,7 @@ func parsePage(r io.Reader) pageMeta {
 			}
 		case html.EndTagToken:
 			name, _ := z.TagName()
+			text.endTag(string(name))
 			switch string(name) {
 			case "head":
 				inHead = false
@@ -103,13 +109,16 @@ func parsePage(r io.Reader) pageMeta {
 				inLD = false
 			}
 		case html.TextToken:
+			// Text() empties the token: read it once.
+			t := z.Text()
 			// First <title> wins; an SVG <title> further down is not ours.
 			if inTitle && m.title == "" {
-				m.title = string(z.Text())
+				m.title = string(t)
 			}
 			if inLD {
-				parseJSONLD(z.Text(), &m.events)
+				parseJSONLD(t, &m.events)
 			}
+			text.text(t)
 		}
 	}
 }
@@ -249,6 +258,7 @@ func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) doma
 		PosterURL:    poster(pageURL, title, m, ldImages),
 		Performances: perfs,
 		DateRange:    rng,
+		Credits:      parseCreditLines(m.lines),
 	}
 }
 
