@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { decode } from "blurhash";
 	import { baseURL } from "@/lib/util/api";
-	import type { LiveShowPoster } from "@/types";
+	import type { LivePosterSize, LiveShowPoster } from "@/types";
 
 	interface Props {
 		/** The stored poster; a neutral placeholder is drawn without one. */
@@ -12,9 +12,11 @@
 		/** Show a landscape image whole, the box taking its own shape,
 		 *  instead of cropping it; off for photo thumbnails. */
 		whole?: boolean;
+		/** Told the image's natural size once it has loaded. */
+		onSize?: (size: LivePosterSize) => void;
 	}
 
-	let { poster, ratio = "2 / 3", whole = true }: Props = $props();
+	let { poster, ratio = "2 / 3", whole = true, onSize }: Props = $props();
 
 	// Small on purpose: the blurhash is stretched to the box by CSS.
 	const BH_W = 20;
@@ -34,7 +36,9 @@
 	// A landscape poster cropped to 2:3 loses most of itself (a wide
 	// production photo used as og:image), so the box takes the image's own
 	// shape instead: no bands around it.
-	let landscape = $derived(whole && !!poster?.path && landscapePath === poster.path);
+	let landscape = $derived(
+		whole && !!poster?.path && landscapePath === poster.path,
+	);
 
 	function onLoad(e: Event) {
 		const img = e.currentTarget as HTMLImageElement;
@@ -44,6 +48,7 @@
 			landscapePath = path;
 		}
 		loadedPath = path;
+		onSize?.({ path, width: img.naturalWidth, height: img.naturalHeight });
 	}
 
 	$effect(() => {
@@ -63,7 +68,11 @@
 	});
 </script>
 
-<div class="live-poster" class:landscape style:aspect-ratio={landscape ? landscapeRatio : ratio}>
+<div
+	class="live-poster"
+	class:landscape
+	style:aspect-ratio={landscape ? landscapeRatio : ratio}
+>
 	{#if src && !failed}
 		{#if !loaded && poster?.blurHash}
 			<canvas width={BH_W} height={BH_H} bind:this={bhCanvas}></canvas>
@@ -107,7 +116,6 @@
 			&.loaded {
 				opacity: 1;
 			}
-
 		}
 	}
 </style>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	// The show's poster, with ways to provide one: some pages declare none,
 	// and on a phone copying an image's address is next to impossible.
-	import type { LiveShow } from "@/types";
+	import type { LivePosterSize, LiveShow } from "@/types";
 	import { notify } from "@/lib/util/notify";
 	import LivePoster from "./LivePoster.svelte";
 	import { errorText, removePoster, uploadPoster } from "./api";
@@ -12,9 +12,10 @@
 		poster: LiveShow["poster"];
 		/** The server's updated show; the caller takes the poster fields. */
 		onChanged: (show: LiveShow) => void;
+		onSize?: (size: LivePosterSize) => void;
 	}
 
-	let { showId, poster, onChanged }: Props = $props();
+	let { showId, poster, onChanged, onSize }: Props = $props();
 
 	let busy = $state(false);
 	let input: HTMLInputElement | undefined = $state();
@@ -53,7 +54,7 @@
 
 <div class="poster-control">
 	{#if poster}
-		<LivePoster {poster} />
+		<LivePoster {poster} {onSize} />
 		<div class="actions">
 			<button
 				type="button"

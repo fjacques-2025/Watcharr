@@ -26,6 +26,7 @@
 	import { notify } from "@/lib/util/notify";
 	import type {
 		LivePhoto,
+		LivePosterSize,
 		LiveShow,
 		LiveShowRequest,
 		LiveShowState,
@@ -44,6 +45,20 @@
 	let editing = $state(false);
 	let confirmingDelete = $state(false);
 	let busy = $state(false);
+	let posterSize: LivePosterSize | undefined = $state();
+
+	// Below this natural width a landscape poster would be blown up past its
+	// pixels across the page; it keeps the side column instead.
+	const WIDE_POSTER_MIN_WIDTH = 400;
+
+	// A big enough landscape poster gets the page's width, above the title,
+	// rather than a thumbnail-sized strip beside it.
+	let widePoster = $derived(
+		!!show?.poster &&
+			posterSize?.path === show.poster.path &&
+			posterSize.width > posterSize.height * 1.1 &&
+			posterSize.width >= WIDE_POSTER_MIN_WIDTH,
+	);
 
 	// Credits as a theatre programme prints them: one line per role, in
 	// programme order (writing and staging first, then the cast, the company
@@ -251,12 +266,16 @@
 				onCancel={() => (editing = false)}
 			/>
 		{:else}
-			<div class="top">
-				<div class="poster">
+			<div class="top" class:wide={widePoster}>
+				<div
+					class="poster"
+					style:max-width={widePoster ? `${posterSize?.width}px` : undefined}
+				>
 					<LivePosterControl
 						showId={show.id}
 						poster={show.poster}
 						onChanged={posterChanged}
+						onSize={(s) => (posterSize = s)}
 					/>
 				</div>
 				<div class="info">
@@ -417,6 +436,16 @@
 		.info {
 			flex: 1 1 auto;
 			min-width: 0;
+		}
+
+		&.wide {
+			flex-flow: column;
+			align-items: stretch;
+
+			.poster {
+				flex-basis: auto;
+				width: 100%;
+			}
 		}
 	}
 
