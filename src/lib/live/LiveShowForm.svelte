@@ -1,8 +1,14 @@
 <script lang="ts">
-	import type { LiveShow, LiveShowRequest } from "@/types";
+	import type {
+		LiveCreditSuggestion,
+		LiveShow,
+		LiveShowRequest,
+	} from "@/types";
 	import { errorText, prefillFromLink } from "./api";
+	import CreditSuggestions from "./CreditSuggestions.svelte";
 	import LiveCreditsEditor, {
 		creditRowsFromCredits,
+		mergeIntoRows,
 		creditRowsToRequest,
 		validateCreditRows,
 		type CreditRow,
@@ -47,6 +53,10 @@
 	// page.
 	let performances: string[] = $state([]);
 	let dateRange: { start: string; end: string } | null = $state(null);
+	// The artists the last fill found on the page, offered above the Artists
+	// editor until added or dismissed; cleared with the dates when the link
+	// changes.
+	let pageCredits: LiveCreditSuggestion[] = $state([]);
 
 	// The preview hides itself once its address has failed to load; keyed by
 	// address so editing the field gives the new one a chance.
@@ -67,9 +77,11 @@
 		}
 	}
 
-	function clearDateChoices() {
+	/** Forgets what the last fill read (dates and artists). */
+	function clearPageFindings() {
 		performances = [];
 		dateRange = null;
+		pageCredits = [];
 	}
 
 	// Mirrors the server's obvious rules, so a typo is caught before a round
@@ -93,7 +105,7 @@
 		}
 		prefilling = true;
 		prefillError = undefined;
-		clearDateChoices();
+		clearPageFindings();
 		try {
 			const r = await prefillFromLink(link);
 			// Only empty fields: what the user typed wins over what was read.
@@ -110,6 +122,7 @@
 			);
 			performances = perfs;
 			dateRange = !perfs.length && r.dateRange ? r.dateRange : null;
+			pageCredits = r.credits ?? [];
 		} catch (err) {
 			console.error("LiveShowForm: prefill failed", err);
 			prefillError = errorText(err);
@@ -158,7 +171,7 @@
 				id="live-prefill-link"
 				type="url"
 				bind:value={pageLink}
-				oninput={clearDateChoices}
+				oninput={clearPageFindings}
 				onkeydown={prefillOnEnter}
 				placeholder="https://"
 				inputmode="url"
@@ -240,6 +253,22 @@
 		<span>Description</span>
 		<textarea bind:value={description} rows={6} maxlength={5000}></textarea>
 	</label>
+	{#if pageCredits.length}
+		<section class="page-credits" aria-labelledby="live-page-credits-title">
+			<h3 id="live-page-credits-title">
+				Found {pageCredits.length}
+				{pageCredits.length === 1 ? "artist" : "artists"} on the page
+			</h3>
+			<CreditSuggestions
+				suggestions={pageCredits}
+				onAdd={(picked) => {
+					credits = mergeIntoRows(credits, picked);
+					pageCredits = [];
+				}}
+				onDismiss={() => (pageCredits = [])}
+			/>
+		</section>
+	{/if}
 	<LiveCreditsEditor bind:rows={credits} />
 
 	{#if error}
@@ -359,6 +388,20 @@
 			display: flex;
 			flex-flow: column;
 			gap: 5px;
+		}
+
+		.page-credits {
+			display: flex;
+			flex-flow: column;
+			gap: 6px;
+			padding: 10px;
+			border: 1px solid $bg-color-accent;
+			border-radius: 8px;
+
+			h3 {
+				margin: 0;
+				font-size: 14px;
+			}
 		}
 
 		.poster-field {

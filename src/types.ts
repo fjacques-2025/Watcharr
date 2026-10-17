@@ -1102,4 +1102,17 @@ export interface LiveShowPrefill {
 	/** When the page only gives a date range without times, as "YYYY-MM-DD"
 	 *  days, e.g. { start: "2027-04-07", end: "2027-04-09" }; null otherwise. */
 	dateRange: { start: string; end: string } | null;
+	/** The artists the page credits, one per person; [] when none. */
+	credits: LiveCreditSuggestion[];
+}
+
+/** A person read from a page or a pasted list. Nothing links them to TMDB. */
+export interface LiveCreditSuggestion {
+	name: string;
+	/** Default roles ("Performer", "Director"…) or free labels kept as
+	 *  written ("Lumière"). */
+	roles: string[];
+	/** True when at least one role is a default role: technical and admin
+	 *  people come unticked. */
+	suggested: boolean;
 }
