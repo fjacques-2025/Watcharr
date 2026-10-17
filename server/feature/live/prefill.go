@@ -234,7 +234,8 @@ func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) doma
 
 	// The event name is the bare title; og:title and <title> tend to append
 	// credits and the site's name.
-	title := stripSiteSuffix(first(ldName, m.props["og:title"], m.title), site)
+	title := stripDomainSuffix(
+		stripSiteSuffix(first(ldName, m.props["og:title"], m.title), site), pageURL.Host)
 
 	// Neither source is reliably the synopsis: Les Théâtres puts the credits
 	// in JSON-LD and the synopsis in og, Joliette the full synopsis in JSON-LD
@@ -341,6 +342,68 @@ func slugFold(s string) string {
 		}
 	}
 	return strings.TrimSuffix(b.String(), "-")
+}
+
+// Generic words of theatre domains: "theatre-lacriee" names the site by
+// "lacriee", not by "theatre".
+var genericDomainWords = map[string]bool{
+	"www": true, "theatre": true, "theater": true, "opera": true, "maison": true,
+	"scene": true, "scenes": true, "ville": true, "spectacle": true, "spectacles": true,
+	"danse": true, "festival": true, "billetterie": true,
+}
+
+// domainWords: the words naming the site in its host — "www.kelemenis.fr"
+// gives "kelemenis", "theatre-lacriee.com" gives "lacriee".
+func domainWords(host string) []string {
+	host = strings.ToLower(strings.TrimPrefix(strings.ToLower(host), "www."))
+	if i := strings.LastIndex(host, "."); i > 0 {
+		host = host[:i] // drop the TLD
+	}
+	var out []string
+	for _, w := range strings.FieldsFunc(host, func(r rune) bool { return r == '.' || r == '-' }) {
+		if len(w) >= 5 && !genericDomainWords[w] {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// stripDomainSuffix drops a trailing segment naming the site, for sites that
+// don't declare og:site_name: "TRANScenDANCE & L'Un contre l'Autre • KLAP
+// Maison pour la danse - Kelemenis & cie" on kelemenis.fr. The strongest
+// separator wins (" | ", then " • "…) so a " - " inside the real title is
+// left alone; the segment must contain a word of the domain.
+func stripDomainSuffix(title, host string) string {
+	words := domainWords(host)
+	if len(words) == 0 {
+		return title
+	}
+	alnum := func(s string) string {
+		var b strings.Builder
+		for _, r := range searchFold(s) {
+			if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				b.WriteRune(r)
+			}
+		}
+		return b.String()
+	}
+	for _, sep := range []string{" | ", " • ", " · ", " — ", " – ", " - "} {
+		for from := 0; ; {
+			i := strings.Index(title[from:], sep)
+			if i < 0 {
+				break
+			}
+			i += from
+			head, rest := strings.TrimSpace(title[:i]), alnum(title[i+len(sep):])
+			for _, w := range words {
+				if utf8.RuneCountInString(head) >= 3 && strings.Contains(rest, w) {
+					return head
+				}
+			}
+			from = i + len(sep)
+		}
+	}
+	return title
 }
 
 var titleSeparators = []string{" | ", " - ", " – ", " — ", " • ", " · "}

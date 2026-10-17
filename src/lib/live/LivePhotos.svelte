@@ -125,7 +125,7 @@
 						onclick={() => (openId = p.id)}
 						aria-label={`${p.isTicket ? "Ticket" : "Photo"} ${i + 1} of ${photos.length}${p.caption ? `: ${p.caption}` : ""}`}
 					>
-						<LivePoster poster={p.image} ratio="1 / 1" />
+						<LivePoster poster={p.image} ratio="1 / 1" whole={false} />
 						{#if p.isTicket}<span class="badge">Ticket</span>{/if}
 					</button>
 				</li>
