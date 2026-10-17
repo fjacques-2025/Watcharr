@@ -246,6 +246,9 @@ func buildPrefillWithVenue(pageURL *url.URL, m pageMeta, remembered string) doma
 	if desc == "" {
 		desc = first(m.metaDesc)
 	}
+	if desc == "" {
+		desc = bodySynopsis(ownShowLines(m.lines))
+	}
 
 	perfs, rng := eventDates(m.events)
 	return domain.LivePrefill{
