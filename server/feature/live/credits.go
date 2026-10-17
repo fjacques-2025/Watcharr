@@ -312,22 +312,59 @@ func parseLabel(ts []token) (labelInfo, bool) {
 		part = part[:0]
 		return true
 	}
+	// Parts between connectors, and the connector before each of them.
+	var parts [][]token
+	var before []token
+	var cur []token
 	for _, t := range ts {
 		if isConnector(t) {
-			if !flush() {
-				return labelInfo{}, false
-			}
+			parts = append(parts, cur)
+			before = append(before, t)
+			cur = nil
 			continue
 		}
 		if isSeparator(t) {
 			continue
 		}
-		part = append(part, t)
+		cur = append(cur, t)
 	}
-	if !flush() || len(info.roles) == 0 || !(anyKnown || stem) {
+	parts = append(parts, cur)
+	// "Design sonore et musical": a lone word after "et" that is no role of
+	// its own qualifies the part before it, it is not a second role.
+	var merged [][]token
+	for i, pt := range parts {
+		if i > 0 && len(pt) == 1 && len(merged) > 0 && len(merged[len(merged)-1]) > 0 &&
+			(before[i-1].fold == "et" || before[i-1].fold == "and") && !roleLike(pt[0]) {
+			last := len(merged) - 1
+			merged[last] = append(merged[last], before[i-1], pt[0])
+			continue
+		}
+		merged = append(merged, pt)
+	}
+	for _, pt := range merged {
+		part = pt
+		if !flush() {
+			return labelInfo{}, false
+		}
+	}
+	if len(info.roles) == 0 || !(anyKnown || stem) {
 		return labelInfo{}, false
 	}
 	return info, true
+}
+
+// roleLike: a word that names a role by itself ("interprétation",
+// "scénographie"), as opposed to a qualifier ("musical").
+func roleLike(t token) bool {
+	if _, ok := knownLabels[t.fold]; ok {
+		return true
+	}
+	for _, s := range roleStems {
+		if strings.HasPrefix(t.fold, s) {
+			return true
+		}
+	}
+	return false
 }
 
 // freeRole: the label as the user would type it, "lumière" → "Lumière".
