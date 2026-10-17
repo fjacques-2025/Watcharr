@@ -387,13 +387,16 @@ func TestOwnShowLinesStopsAtOtherShows(t *testing.T) {
 }
 
 func TestLabelQualifierAfterEt(t *testing.T) {
-	got, err := ParseCredits("design sonore et musical Deena Abdelwahed\ncréation et interprétation Robin Haghi\ntexte et mise en scène Marie Dupont")
+	got, err := ParseCredits("design sonore et musical Deena Abdelwahed\ncréation et interprétation Robin Haghi\ntexte et mise en scène Marie Dupont\ndirection musicale Paul Durand\ncréation sonore Maïa Blondeau")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Any label about music is Music; sound alone stays a free role.
 	checkCredits(t, got, `
-Deena Abdelwahed: Design sonore et musical
+Deena Abdelwahed: Music *
 Robin Haghi: Création, Performer *
 Marie Dupont: Writer, Director *
+Paul Durand: Music *
+Maïa Blondeau: Création sonore
 `)
 }
