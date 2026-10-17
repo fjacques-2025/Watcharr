@@ -47,6 +47,11 @@
 		return [...known, ...other].map((role) => ({ role, n: n[role] }));
 	});
 
+	// A label the parser didn't recognise, kept as written ("Régie
+	// générale"): coloured apart so it can be checked before adding.
+	const isFree = (role: string) => !defaultRoles.includes(role);
+	const FREE_HINT = " (not a usual role, kept as written)";
+
 	function roleOn(i: number, role: string) {
 		return personRole[i]?.[role] ?? !offForAll[role];
 	}
@@ -106,10 +111,11 @@
 				<button
 					type="button"
 					class="chip"
+					class:free={isFree(role)}
 					aria-pressed={!offForAll[role]}
-					title={offForAll[role]
+					title={(offForAll[role]
 						? `Give "${role}" back to everyone`
-						: `Drop "${role}" for everyone`}
+						: `Drop "${role}" for everyone`) + (isFree(role) ? FREE_HINT : "")}
 					onclick={() => toggleForAll(role)}
 				>
 					{role} <span class="n">{n}</span>
@@ -155,8 +161,10 @@
 							<button
 								type="button"
 								class="chip"
+								class:free={isFree(r)}
 								aria-pressed={roleOn(i, r)}
-								title={roleOn(i, r) ? `Drop "${r}"` : `Keep "${r}"`}
+								title={(roleOn(i, r) ? `Drop "${r}"` : `Keep "${r}"`) +
+									(isFree(r) ? FREE_HINT : "")}
 								onclick={() => togglePersonRole(i, r)}
 							>
 								{r}
@@ -313,6 +321,16 @@
 			background-color: $text-color;
 			color: $bg-color;
 			text-decoration: none;
+		}
+
+		&.free {
+			border-color: $warn;
+			color: $warn;
+
+			&[aria-pressed="true"] {
+				background-color: $warn;
+				color: black;
+			}
 		}
 	}
 
