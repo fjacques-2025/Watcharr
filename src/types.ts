@@ -1067,6 +1067,13 @@ export interface LivePersonDetail {
 	roles: { role: string; shows: LiveShow[] }[];
 }
 
+/** A poster image's natural size, as the browser loaded it. */
+export interface LivePosterSize {
+	path: string;
+	width: number;
+	height: number;
+}
+
 export interface LiveShowPoster {
 	path: string;
 	blurHash: string;
