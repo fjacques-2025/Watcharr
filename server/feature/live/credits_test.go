@@ -385,3 +385,15 @@ func TestOwnShowLinesStopsAtOtherShows(t *testing.T) {
 		t.Errorf("variant heading not seen: %q", got)
 	}
 }
+
+func TestLabelQualifierAfterEt(t *testing.T) {
+	got, err := ParseCredits("design sonore et musical Deena Abdelwahed\ncréation et interprétation Robin Haghi\ntexte et mise en scène Marie Dupont")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkCredits(t, got, `
+Deena Abdelwahed: Design sonore et musical
+Robin Haghi: Création, Performer *
+Marie Dupont: Writer, Director *
+`)
+}
