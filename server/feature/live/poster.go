@@ -6,11 +6,30 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/image"
 	"gorm.io/gorm"
 )
+
+// Pause before the one retry of a failed poster download; tests set it to 0.
+var posterRetryDelay = 700 * time.Millisecond
+
+// transientFetchError: worth retrying. A refusal — blocked address, file too
+// big, a 4xx, a redirect loop, a bad URL — would fail the same way again.
+func transientFetchError(err error) bool {
+	var verr *ValidationError
+	if errors.Is(err, errBlockedAddress) || errors.Is(err, errTooBig) || errors.As(err, &verr) {
+		return false
+	}
+	msg := err.Error()
+	if strings.HasPrefix(msg, "HTTP 4") || strings.Contains(msg, "too many redirects") {
+		return false
+	}
+	return true
+}
 
 // Posters go under img/live/, next to the other cached images.
 const posterSubPath = "live"
@@ -30,6 +49,14 @@ func (s *Service) downloadPoster(raw string) ([]byte, error) {
 		return nil, posterError(err.Error())
 	}
 	res, err := s.fetch.get(context.Background(), u, maxImageBytes, false)
+	if err != nil && transientFetchError(err) {
+		// A slow site or a dropped connection: worth one more go before
+		// telling the user (on the NAS a first attempt has timed out where
+		// the second worked).
+		slog.Info("live: retrying poster download", "url", u.Redacted(), "reason", err)
+		time.Sleep(posterRetryDelay)
+		res, err = s.fetch.get(context.Background(), u, maxImageBytes, false)
+	}
 	if err != nil {
 		slog.Warn("live: poster download failed", "url", u.Redacted(), "reason", err)
 		var verr *ValidationError

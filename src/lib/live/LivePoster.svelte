@@ -9,9 +9,12 @@
 		/** CSS aspect-ratio of the box: a poster by default, "1 / 1" for
 		 *  photo thumbnails (cropped to fill). */
 		ratio?: string;
+		/** Show a landscape image whole (letterboxed over its blurhash)
+		 *  instead of cropping it; off for photo thumbnails. */
+		whole?: boolean;
 	}
 
-	let { poster, ratio = "2 / 3" }: Props = $props();
+	let { poster, ratio = "2 / 3", whole = true }: Props = $props();
 
 	// Small on purpose: the blurhash is stretched to the box by CSS.
 	const BH_W = 20;
@@ -21,11 +24,22 @@
 	// own blurhash instead of inheriting the previous image's state.
 	let loadedPath = $state("");
 	let failedPath = $state("");
+	let landscapePath = $state("");
 	let bhCanvas: HTMLCanvasElement | undefined = $state();
 
 	let src = $derived(poster?.path ? `${baseURL}/${poster.path}` : "");
 	let loaded = $derived(!!poster?.path && loadedPath === poster.path);
 	let failed = $derived(!!poster?.path && failedPath === poster.path);
+	// A landscape poster cropped to 2:3 loses most of itself (a wide
+	// production photo used as og:image), so it is shown whole instead.
+	let contain = $derived(whole && !!poster?.path && landscapePath === poster.path);
+
+	function onLoad(e: Event) {
+		const img = e.currentTarget as HTMLImageElement;
+		const path = poster?.path ?? "";
+		if (img.naturalWidth > img.naturalHeight * 1.1) landscapePath = path;
+		loadedPath = path;
+	}
 
 	$effect(() => {
 		const bh = poster?.blurHash;
@@ -46,7 +60,8 @@
 
 <div class="live-poster" style:aspect-ratio={ratio}>
 	{#if src && !failed}
-		{#if !loaded && poster?.blurHash}
+		<!-- Kept behind a letterboxed image: its colours fill the bands. -->
+		{#if (!loaded || contain) && poster?.blurHash}
 			<canvas width={BH_W} height={BH_H} bind:this={bhCanvas}></canvas>
 		{/if}
 		<img
@@ -54,7 +69,8 @@
 			alt=""
 			loading="lazy"
 			class:loaded
-			onload={() => (loadedPath = poster?.path ?? "")}
+			class:contain
+			onload={onLoad}
 			onerror={() => (failedPath = poster?.path ?? "")}
 		/>
 	{/if}
@@ -83,6 +99,10 @@
 
 			&.loaded {
 				opacity: 1;
+			}
+
+			&.contain {
+				object-fit: contain;
 			}
 		}
 	}
