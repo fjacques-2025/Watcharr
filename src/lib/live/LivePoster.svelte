@@ -9,7 +9,7 @@
 		/** CSS aspect-ratio of the box: a poster by default, "1 / 1" for
 		 *  photo thumbnails (cropped to fill). */
 		ratio?: string;
-		/** Show a landscape image whole (letterboxed over its blurhash)
+		/** Show a landscape image whole, the box taking its own shape,
 		 *  instead of cropping it; off for photo thumbnails. */
 		whole?: boolean;
 	}
@@ -25,19 +25,24 @@
 	let loadedPath = $state("");
 	let failedPath = $state("");
 	let landscapePath = $state("");
+	let landscapeRatio = $state("");
 	let bhCanvas: HTMLCanvasElement | undefined = $state();
 
 	let src = $derived(poster?.path ? `${baseURL}/${poster.path}` : "");
 	let loaded = $derived(!!poster?.path && loadedPath === poster.path);
 	let failed = $derived(!!poster?.path && failedPath === poster.path);
 	// A landscape poster cropped to 2:3 loses most of itself (a wide
-	// production photo used as og:image), so it is shown whole instead.
-	let contain = $derived(whole && !!poster?.path && landscapePath === poster.path);
+	// production photo used as og:image), so the box takes the image's own
+	// shape instead: no bands around it.
+	let landscape = $derived(whole && !!poster?.path && landscapePath === poster.path);
 
 	function onLoad(e: Event) {
 		const img = e.currentTarget as HTMLImageElement;
 		const path = poster?.path ?? "";
-		if (img.naturalWidth > img.naturalHeight * 1.1) landscapePath = path;
+		if (img.naturalWidth > img.naturalHeight * 1.1) {
+			landscapeRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+			landscapePath = path;
+		}
 		loadedPath = path;
 	}
 
@@ -58,10 +63,9 @@
 	});
 </script>
 
-<div class="live-poster" style:aspect-ratio={ratio}>
+<div class="live-poster" class:landscape style:aspect-ratio={landscape ? landscapeRatio : ratio}>
 	{#if src && !failed}
-		<!-- Kept behind a letterboxed image: its colours fill the bands. -->
-		{#if (!loaded || contain) && poster?.blurHash}
+		{#if !loaded && poster?.blurHash}
 			<canvas width={BH_W} height={BH_H} bind:this={bhCanvas}></canvas>
 		{/if}
 		<img
@@ -69,7 +73,6 @@
 			alt=""
 			loading="lazy"
 			class:loaded
-			class:contain
 			onload={onLoad}
 			onerror={() => (failedPath = poster?.path ?? "")}
 		/>
@@ -83,6 +86,10 @@
 		overflow: hidden;
 		border-radius: 6px;
 		background-color: $bg-color-accent;
+
+		&.landscape {
+			background-color: transparent;
+		}
 
 		canvas,
 		img {
@@ -101,9 +108,6 @@
 				opacity: 1;
 			}
 
-			&.contain {
-				object-fit: contain;
-			}
 		}
 	}
 </style>
