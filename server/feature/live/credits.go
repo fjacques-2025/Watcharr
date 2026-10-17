@@ -609,3 +609,19 @@ func ParseCredits(text string) ([]domain.LiveCreditSuggestion, error) {
 	text = strings.NewReplacer("\r\n", "\n", "\r", "\n", "\u2028", "\n", "\u2029", "\n").Replace(text)
 	return parseCreditLines(strings.Split(text, "\n")), nil
 }
+
+// Headings after which a show page lists other shows ("Vous aimerez aussi"):
+// credits found below them belong to those shows. Les Théâtres' page for
+// "Fête des mères" offered another show's company as its own, pre-checked.
+var otherShowsHeading = regexp.MustCompile(`^(vous aimerez (aussi|également)|vous aimerez peut-être|à (voir|découvrir) aussi|dans la même (thématique|catégorie)|les autres spectacles|autres spectacles|aussi à l'affiche|aussi à l’affiche|prochainement|spectacles associés|en lien avec ce spectacle)\b`)
+
+// ownShowLines keeps a page's lines up to the first "other shows" heading.
+// Only for pages: pasted text is the user's own selection.
+func ownShowLines(lines []string) []string {
+	for i, l := range lines {
+		if otherShowsHeading.MatchString(strings.ToLower(strings.TrimSpace(l))) {
+			return lines[:i]
+		}
+	}
+	return lines
+}
