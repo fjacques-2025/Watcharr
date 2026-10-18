@@ -22,6 +22,9 @@ const (
 	WatchedSortDateAdded    WatchedSort = "DATEADDED"
 	WatchedSortLastChanged  WatchedSort = "LASTCHANGED"
 	WatchedSortLastFinished WatchedSort = "LASTFIN"
+	// Fork: like LastFinished, but a watched episode (or season) counts too,
+	// so a show being watched comes up as soon as an episode is ticked.
+	WatchedSortLastWatched  WatchedSort = "LASTWATCHED"
 	WatchedSortRating       WatchedSort = "RATING"
 	WatchedSortAlphabetical WatchedSort = "ALPHA"
 	WatchedSortDateReleased WatchedSort = "DATERELEASED"

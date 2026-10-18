@@ -129,6 +129,54 @@ func refineSort(
 					GROUP BY watched_id
 				) q ON q.a_watched_id = watcheds.id`, userId).
 			Order(obc(clause.Column{Name: "q.a_sort_by_date"}))
+	case domain.WatchedSortLastWatched:
+		// Same as LastFinished, plus the episodes and seasons set to FINISHED:
+		// their activities never count as a play (only the show finishing
+		// does), so a show half way through a new season would otherwise stay
+		// where its last season left it. Imported episodes keep their real
+		// date in custom_date.
+		// Seasons Watcharr set to FINISHED by itself are left out: they follow
+		// an episode being ticked, which already carries the date, and on an
+		// import they get the import's date (no custom_date), which would put
+		// every imported show on that day.
+		// `data` is JSON for these types but plain text for some others
+		// (STATUS_CHANGED holds "FINISHED"), and json_extract fails the whole
+		// query on invalid JSON: hence the json_valid guard.
+		db.
+			Joins(`LEFT JOIN (
+					SELECT
+						watched_id AS w_watched_id,
+						MAX(COALESCE(custom_date, created_at)) AS w_sort_by_date
+					FROM activities
+					WHERE
+						deleted_at IS NULL
+						AND user_id = ?
+						AND (
+							count_as_play = 1
+							OR (
+								type IN ?
+								AND CASE WHEN json_valid(data)
+									THEN json_extract(data, '$.status') END = ?
+								AND (type IN ? OR COALESCE(created_by, 0) <> ?)
+							)
+						)
+					GROUP BY watched_id
+				) lw ON lw.w_watched_id = watcheds.id`,
+				userId,
+				[]entity.ActivityType{
+					entity.EPISODE_ADDED,
+					entity.EPISODE_STATUS_CHANGED,
+					entity.SEASON_ADDED,
+					entity.SEASON_STATUS_CHANGED,
+				},
+				entity.FINISHED,
+				[]entity.ActivityType{
+					entity.EPISODE_ADDED,
+					entity.EPISODE_STATUS_CHANGED,
+				},
+				entity.ActivityCreatedByWatcharr,
+			).
+			Order(obc(clause.Column{Name: "lw.w_sort_by_date"}))
 	case domain.WatchedSortRating:
 		db.Order(obc(clause.Column{Name: "watcheds.rating"}))
 	case domain.WatchedSortAlphabetical:

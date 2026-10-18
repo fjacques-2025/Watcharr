@@ -52,6 +52,13 @@
 	>
 		Last Finished
 	</button>
+	<!-- Fork: a ticked episode counts too, so shows in progress come up. -->
+	<button
+		class={`plain ${getDirectionClass("LASTWATCHED")}`}
+		onclick={() => sortClicked("LASTWATCHED")}
+	>
+		Last Watched
+	</button>
 	<button
 		class={`plain ${getDirectionClass("RATING")}`}
 		onclick={() => sortClicked("RATING")}
