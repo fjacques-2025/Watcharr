@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import { notify } from "@/lib/util/notify";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
 	import Icon from "@/lib/Icon.svelte";
@@ -104,7 +105,7 @@
 			<li class="up-next-card">
 				<button
 					class="thumb"
-					onclick={() => goto(`/tv/${item.tmdbId}`)}
+					onclick={() => goto(resolve(`/tv/${item.tmdbId}`))}
 					title={item.showTitle}
 				>
 					{#if img(item)}
@@ -123,7 +124,9 @@
 					{#if item.airDate}
 						{@const future = new Date(item.airDate) > new Date()}
 						<span class="air" class:future title="TV broadcast date">
-							{future ? "📺 Airs " : ""}{new Date(item.airDate).toLocaleDateString()}
+							{future ? "📺 Airs " : ""}{new Date(
+								item.airDate,
+							).toLocaleDateString()}
 						</span>
 					{/if}
 				</div>

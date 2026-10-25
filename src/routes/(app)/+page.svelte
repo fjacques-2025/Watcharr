@@ -108,7 +108,7 @@
 				initialLoad = false;
 				// Patch in any items refreshed on their detail page (e.g. newly
 				// translated), leaving the rest of the cached list untouched.
-				dataLoader.state.data = applyContentUpdates(listCache.data) as Media[];
+				dataLoader.state.data = applyContentUpdates(listCache.data as Media[]);
 				dataLoader.state.page = listCache.page;
 				dataLoader.state.pageMax = listCache.pageMax;
 				restoreScrollTo(listCache.scrollY);

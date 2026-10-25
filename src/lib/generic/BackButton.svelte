@@ -11,6 +11,9 @@
 		if (canGoBackInApp()) {
 			history.back();
 		} else {
+			// A URL this tab already visited (query string included), not a
+			// route to build: resolve() doesn't apply.
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			goto(lastInAppUrl() ?? "/");
 		}
 	}

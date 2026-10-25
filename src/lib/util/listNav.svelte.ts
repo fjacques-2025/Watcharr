@@ -1,4 +1,5 @@
-import { MediaTypeE } from "@/types";
+import { resolve } from "$app/paths";
+import { MediaTypeE, type Media } from "@/types";
 
 // Ordered list of navigable items currently shown on the watched list, so
 // detail pages can offer previous/next navigation (arrows + swipe) matching
@@ -8,7 +9,7 @@ export type ListNavItem = { type: "tv" | "movie" | "game"; id: number };
 const s = $state<{ items: ListNavItem[] }>({ items: [] });
 
 /** Publish the current watched-list order (from the list of Media items). */
-export function setListOrder(medias: any[]) {
+export function setListOrder(medias: Media[]) {
 	const items: ListNavItem[] = [];
 	for (const m of medias ?? []) {
 		if (!m) continue;
@@ -36,23 +37,24 @@ export function adjacentItem(
 	};
 }
 
-export function itemHref(it: ListNavItem): string {
-	return `/${it.type}/${it.id}`;
+export function itemHref(it: ListNavItem) {
+	return resolve(`/${it.type}/${it.id}`);
 }
 
 // Fresh content (Media) seen on detail pages, keyed by "type:id". Used to patch
 // just that item in the restored (cached) list — e.g. after a title's metadata
 // was translated on its detail page — with no extra request.
-const contentUpdates = new Map<string, any>();
+// A plain object, not a (Svelte)Map: a cache read on demand, never rendered.
+const contentUpdates: Record<string, Media> = {};
 
-export function markContentRefreshed(type: "tv" | "movie", media: any) {
+export function markContentRefreshed(type: "tv" | "movie", media: Media) {
 	const id = media?.ids?.tmdb;
-	if (id != null) contentUpdates.set(`${type}:${id}`, media);
+	if (id != null) contentUpdates[`${type}:${id}`] = media;
 }
 
 /** Return the list with any refreshed items patched in place (new array). */
-export function applyContentUpdates(medias: any[]): any[] {
-	if (contentUpdates.size === 0) return medias;
+export function applyContentUpdates(medias: Media[]): Media[] {
+	if (Object.keys(contentUpdates).length === 0) return medias;
 	return (medias ?? []).map((m) => {
 		if (!m?.ids) return m;
 		const rt =
@@ -62,13 +64,13 @@ export function applyContentUpdates(medias: any[]): any[] {
 					? "movie"
 					: null;
 		if (!rt) return m;
-		const fresh = contentUpdates.get(`${rt}:${m.ids.tmdb}`);
+		const fresh = contentUpdates[`${rt}:${m.ids.tmdb}`];
 		if (!fresh) return m;
 		// Patch only language-dependent display fields; keep list-specific state
 		// (watched status, rating, etc.).
 		const patch = { ...m };
 		if (fresh.name != null) patch.name = fresh.name;
-		if (fresh.overview != null) patch.overview = fresh.overview;
+		if (fresh.summary != null) patch.summary = fresh.summary;
 		if (fresh.extPosterPath != null) patch.extPosterPath = fresh.extPosterPath;
 		if ("poster" in fresh) patch.poster = fresh.poster;
 		return patch;

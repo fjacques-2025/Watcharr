@@ -143,6 +143,8 @@
 							{#if f.telerama}
 								<!-- Their scale is 0-4 "T"s. On mobile this link opens the
 								     Télérama app, where a subscriber gets the full review. -->
+								<!-- External URL, nothing to resolve(). -->
+								<!-- eslint-disable svelte/no-navigation-without-resolve -->
 								<a
 									class="telerama"
 									href={f.telerama.url}
@@ -157,6 +159,7 @@
 									{/if}
 									<span class="label">{f.telerama.ratingLabel}</span>
 								</a>
+								<!-- eslint-enable svelte/no-navigation-without-resolve -->
 							{/if}
 							{#if f.genre}<span>{f.genre}</span>{/if}
 							{#if f.runtime}<span>{runtimeLabel(f.runtime)}</span>{/if}
@@ -183,7 +186,8 @@
 									: st.start}
 								{#if st.bookingUrl}
 									<!-- External URL: the cinema's own booking flow, so no
-									     resolve() — which is why eslint flags this line. -->
+									     resolve(). -->
+									<!-- eslint-disable svelte/no-navigation-without-resolve -->
 									<a
 										class="slot"
 										href={st.bookingUrl}
@@ -194,6 +198,7 @@
 										{st.start}
 										{#if st.version}<em>{st.version}</em>{/if}
 									</a>
+									<!-- eslint-enable svelte/no-navigation-without-resolve -->
 								{:else}
 									<span class="slot" title={label}>
 										{st.start}

@@ -41,7 +41,10 @@
 		let x0: number | null = null;
 		let y0 = 0;
 		const onStart = (e: TouchEvent) => {
-			if (e.touches.length !== 1 || inHorizontalScroller(e.target as HTMLElement)) {
+			if (
+				e.touches.length !== 1 ||
+				inHorizontalScroller(e.target as HTMLElement)
+			) {
 				x0 = null;
 				return;
 			}
@@ -69,12 +72,22 @@
 </script>
 
 {#if adj.prev}
-	<button class="item-nav prev" onclick={() => go("prev")} title="Previous" aria-label="Previous">
+	<button
+		class="item-nav prev"
+		onclick={() => go("prev")}
+		title="Previous"
+		aria-label="Previous"
+	>
 		<Icon i="chevron" facing="left" wh={26} />
 	</button>
 {/if}
 {#if adj.next}
-	<button class="item-nav next" onclick={() => go("next")} title="Next" aria-label="Next">
+	<button
+		class="item-nav next"
+		onclick={() => go("next")}
+		title="Next"
+		aria-label="Next"
+	>
 		<Icon i="chevron" facing="right" wh={26} />
 	</button>
 {/if}
