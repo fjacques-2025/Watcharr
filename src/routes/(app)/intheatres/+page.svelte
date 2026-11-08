@@ -42,7 +42,7 @@
 	// Which set of theatres we're showing.
 	//
 	// There was a "Near me" scope here. It's gone for now: the showtimes source
-	// only covers cinemas running the Erakys platform, and the other Marseille
+	// only covers cinemas on Erakys or Pathé, and the other Marseille
 	// venues (Le Prado, Le Chambord) don't — so "near me" would have listed
 	// nothing the "My theatres" scope doesn't already show. See DEV-WATCHARR.md.
 	type Scope = "mine" | "week" | "next";

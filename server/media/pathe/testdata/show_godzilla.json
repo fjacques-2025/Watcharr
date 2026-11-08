@@ -1,0 +1,135 @@
+{
+ "slug": "godzilla-minus-zero-54837",
+ "title": "Godzilla Minus Zero",
+ "titleTracking": "Godzilla Minus Zero",
+ "releaseAt": {
+  "FR_FR": "2026-11-04"
+ },
+ "contentRating": {
+  "ref": "cfb037be1d0535620d7f01a66e72683f42b7982894c382d89b03562d23116028",
+  "description": "-12",
+  "extendedDescription": null
+ },
+ "cinechecks": [],
+ "genres": [
+  "Action",
+  "Aventure",
+  "Drame"
+ ],
+ "genresSlug": [
+  "action",
+  "aventure",
+  "drame"
+ ],
+ "genresTracking": [
+  "Action",
+  "Aventure",
+  "Drame"
+ ],
+ "duration": 135,
+ "directors": "Takashi Yamazaki",
+ "actors": "Miou Tanaka, Ryûnosuke Kamiki, Minami Hamabe",
+ "synopsis": "Japon après la Seconde Guerre mondiale, Shikishima Koichi, un ancien pilote kamikaze survit à une rencontre avec Godzilla et souffre de symptômes de stress post-traumatique. Lorsque la créature réapparaît des années plus tard, un groupe de soldats et de vétérans doit s'unir pour vaincre le monstre avant qu'il ne puisse détruire le Japon.",
+ "entertainementLogo": null,
+ "entertainementSubtitle": null,
+ "distribution": null,
+ "entertainementCasting": null,
+ "posterPath": {
+  "lg": "https://media.pathe.fr/movie/alex/HO00011636/poster/lg/5/movie&uuid=019E19FC-A51D-4C08-AFA8-77E61F0F6D0E",
+  "md": "https://media.pathe.fr/movie/alex/HO00011636/poster/md/5/movie&uuid=019E19FC-A51D-4C08-AFA8-77E61F0F6D0E"
+ },
+ "backgroundPath": {
+  "lg": "https://media.pathe.fr/movie/mx/54837/lg/3/media",
+  "md": "https://media.pathe.fr/movie/mx/54837/md/3/media",
+  "sm": "https://media.pathe.fr/movie/mx/54837/sm/3/media"
+ },
+ "backgroundDominantColor": "#131718",
+ "isMovie": true,
+ "trailers": [
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00011636/06a0043f-537b-4b38-ad89-b95e825112aa.mp4",
+   "videoType": "S3",
+   "title": "JA - Godzilla Minus Zero",
+   "snapshot": "https://media.pathe.fr/movie/mx/54837/md/3/media",
+   "isMain": false,
+   "language": "ja"
+  },
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00011636/668b6d1d-f98c-4ea1-9ff8-d050875a0ae7.mp4",
+   "videoType": "S3",
+   "title": "FR - Godzilla Minus Zero",
+   "snapshot": "https://media.pathe.fr/movie/mx/54837/md/3/media",
+   "isMain": true,
+   "language": "fr"
+  },
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00011636/bda3e94e-c19e-40af-97f3-94ecce67ffc3.mp4",
+   "videoType": "S3",
+   "title": "JA - Godzilla Minus Zero (3)",
+   "snapshot": "https://media.pathe.fr/movie/mx/54837/md/3/media",
+   "isMain": false,
+   "language": "ja"
+  },
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00011636/c6923a71-ea3a-446d-a141-0ffd158b63be.mp4",
+   "videoType": "S3",
+   "title": "JA - Godzilla Minus Zero (2)",
+   "snapshot": "https://media.pathe.fr/movie/mx/54837/md/3/media",
+   "isMain": false,
+   "language": "ja"
+  }
+ ],
+ "presentation": null,
+ "calendar": null,
+ "warning": null,
+ "nationality": "Japon",
+ "nationalityTracking": "Japon",
+ "originalTitle": "Godzilla Minus Zero",
+ "feelings": {
+  "countWishList": 7044,
+  "countEmotionDisappointed": 298,
+  "countEmotionLike": 523,
+  "countEmotionLove": 915
+ },
+ "event": [],
+ "redirectSlug": null,
+ "refHubble": "54837",
+ "isNew": true,
+ "notComingSoon": false,
+ "visaHubble": null,
+ "copiesCount": 200,
+ "next24ShowtimesCount": 454,
+ "tags": [
+  "4dx",
+  "atmos",
+  "confort_peugeot",
+  "dolby",
+  "GPXP",
+  "imax",
+  "palace",
+  "peugeot",
+  "pmr",
+  "premium",
+  "PREMIUM",
+  "premium-filtre-global",
+  "premium-peugeot",
+  "premium-seats",
+  "vipcocoon_peugeot",
+  "vip_fr",
+  "viplounge_peugeot",
+  "vipvalette_peugeot",
+  "vipvelvet_peugeot"
+ ],
+ "salesOpeningDatetime": "2026-10-12T08:00:00+02:00",
+ "showtimesDisplayDatetime": "2026-10-12T08:00:00+02:00",
+ "vodAvailability": false,
+ "vod": null,
+ "refVista": "HO00011636",
+ "labelFlagColor": null,
+ "labelCategory": null,
+ "label": null,
+ "originalReleaseAt": null,
+ "extraInformation": null,
+ "logoTitle": null,
+ "type": null
+}

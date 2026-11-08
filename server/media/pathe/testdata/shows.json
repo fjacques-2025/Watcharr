@@ -1,0 +1,211 @@
+{
+ "days": {
+  "2026-11-08": {
+   "upsell": {
+    "tag": "dolby",
+    "showSlug": "les-miserables-48629"
+   },
+   "highlightedShowtime": {
+    "type": "specialShowtimeCinema",
+    "showSlug": "ce-qui-nous-mene-a-toi-52756"
+   }
+  },
+  "2026-11-09": {
+   "upsell": {
+    "tag": "dolby",
+    "showSlug": "street-fighter-49553"
+   },
+   "highlightedShowtime": null
+  },
+  "2026-11-10": {
+   "upsell": {
+    "tag": "dolby",
+    "showSlug": "les-miserables-48629"
+   },
+   "highlightedShowtime": {
+    "type": "specialShowtimeCinema",
+    "showSlug": "changer-l-eau-des-fleurs-51604"
+   }
+  }
+ },
+ "shows": {
+  "godzilla-minus-zero-54837": {
+   "days": {
+    "2026-11-08": {
+     "tags": [
+      "4dx",
+      "DEFAULT",
+      "dolby",
+      "GPXP",
+      "peugeot",
+      "pmr",
+      "premium",
+      "PREMIUM",
+      "viplounge_peugeot",
+      "vipvelvet_peugeot"
+     ],
+     "bookable": true,
+     "versions": [
+      "vf",
+      "vost"
+     ],
+     "flag": "DOLBY CINEMA",
+     "flagColor": null,
+     "cineOrder": 167,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    },
+    "2026-11-09": {
+     "tags": [
+      "4dx",
+      "DEFAULT",
+      "dolby",
+      "GPXP",
+      "peugeot",
+      "pmr",
+      "premium",
+      "PREMIUM",
+      "vipvelvet_peugeot"
+     ],
+     "bookable": true,
+     "versions": [
+      "vf",
+      "vost"
+     ],
+     "flag": "DOLBY CINEMA",
+     "flagColor": null,
+     "cineOrder": 167,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    },
+    "2026-11-10": {
+     "tags": [
+      "4dx",
+      "DEFAULT",
+      "dolby",
+      "GPXP",
+      "peugeot",
+      "pmr",
+      "premium",
+      "PREMIUM",
+      "vipvelvet_peugeot"
+     ],
+     "bookable": true,
+     "versions": [
+      "vf",
+      "vost"
+     ],
+     "flag": "DOLBY CINEMA",
+     "flagColor": null,
+     "cineOrder": 167,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    }
+   },
+   "bookable": true,
+   "isBookable": true,
+   "isNew": true,
+   "isComingSoon": false,
+   "isEarlyVisible": false,
+   "isEarlyBookable": false,
+   "isEarlyAVP": false,
+   "cineOrder": 167,
+   "cineKidsOrder": null,
+   "cineUpcomingOrder": 97,
+   "cineEntertainmentOrder": 8,
+   "cineEntertainmentOrder2": 8,
+   "specialEvent": false,
+   "isKids": false,
+   "next24ShowtimesCount": 11
+  },
+  "kraken-50712": {
+   "days": {
+    "2026-11-09": {
+     "tags": [
+      "DEFAULT",
+      "pmr"
+     ],
+     "bookable": true,
+     "versions": [
+      "vf"
+     ],
+     "flag": null,
+     "flagColor": null,
+     "cineOrder": 263,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    },
+    "2026-11-10": {
+     "tags": [
+      "DEFAULT",
+      "pmr"
+     ],
+     "bookable": true,
+     "versions": [
+      "vf"
+     ],
+     "flag": null,
+     "flagColor": null,
+     "cineOrder": 263,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    }
+   },
+   "bookable": true,
+   "isBookable": true,
+   "isNew": false,
+   "isComingSoon": false,
+   "isEarlyVisible": false,
+   "isEarlyBookable": false,
+   "isEarlyAVP": false,
+   "cineOrder": 263,
+   "cineKidsOrder": null,
+   "cineUpcomingOrder": 118,
+   "cineEntertainmentOrder": 112,
+   "cineEntertainmentOrder2": 112,
+   "specialEvent": false,
+   "isKids": false,
+   "next24ShowtimesCount": 0
+  },
+  "parsifal-met-52027": {
+   "days": {
+    "2027-06-05": {
+     "tags": [
+      "DEFAULT",
+      "pmr"
+     ],
+     "bookable": true,
+     "versions": [
+      "vost"
+     ],
+     "flag": null,
+     "flagColor": null,
+     "cineOrder": 4,
+     "specialEvent": null,
+     "specialShowtime": false,
+     "labelCategory": null
+    }
+   },
+   "bookable": true,
+   "isBookable": true,
+   "isNew": false,
+   "isComingSoon": true,
+   "isEarlyVisible": true,
+   "isEarlyBookable": true,
+   "isEarlyAVP": false,
+   "cineOrder": 4,
+   "cineKidsOrder": null,
+   "cineUpcomingOrder": 251,
+   "cineEntertainmentOrder": 269,
+   "cineEntertainmentOrder2": 269,
+   "specialEvent": false,
+   "isKids": false,
+   "next24ShowtimesCount": 0
+  }
+ }
+}

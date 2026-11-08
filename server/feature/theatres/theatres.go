@@ -19,6 +19,7 @@ import (
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/feature/watched/addedtocontent"
 	"github.com/sbondCo/Watcharr/media/erakys"
+	"github.com/sbondCo/Watcharr/media/pathe"
 	"github.com/sbondCo/Watcharr/media/telerama"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"github.com/sbondCo/Watcharr/util"
@@ -27,10 +28,29 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// The user's cinemas. Both run on Erakys, so one integration covers them.
-var venues = []erakys.Venue{
-	{Name: "Les Variétés", Host: "lesvarietes-marseille.com"},
-	{Name: "Artplexe Canebière", Host: "artplexe-canebiere.com"},
+// A cinema and how to read its programme.
+type venue struct {
+	Name  string
+	fetch func(day time.Time) ([]erakys.Film, error)
+}
+
+func erakysVenue(name, host string) venue {
+	return venue{name, func(day time.Time) ([]erakys.Film, error) {
+		return erakys.FetchDay(host, day)
+	}}
+}
+
+func patheVenue(name, slug string) venue {
+	return venue{name, func(day time.Time) ([]erakys.Film, error) {
+		return pathe.FetchDay(slug, day)
+	}}
+}
+
+// The user's cinemas. The first two run on Erakys; Pathé has its own API.
+var venues = []venue{
+	erakysVenue("Les Variétés", "lesvarietes-marseille.com"),
+	erakysVenue("Artplexe Canebière", "artplexe-canebiere.com"),
+	patheVenue("Pathé La Joliette", "cinema-pathe-la-joliette"),
 }
 
 // Assembled days, keyed by day + region. Short enough that an evening
@@ -143,8 +163,8 @@ func (s *Service) programme(
 		return *cached, nil
 	}
 
-	// Group by normalized title: the same film plays at both venues, and the
-	// Erakys film code is per-site so it can't join across them.
+	// Group by normalized title: the same film plays at several venues, and
+	// film codes are per-site so they can't join across them.
 	type entry struct {
 		film       *domain.TheatreFilm
 		screenings map[string]*domain.TheatreScreenings
@@ -153,7 +173,7 @@ func (s *Service) programme(
 	byTitle := make(map[string]*entry)
 
 	for _, v := range venues {
-		films, err := erakys.FetchDay(v.Host, day)
+		films, err := v.fetch(day)
 		if err != nil {
 			slog.Error("theatres: skipping venue", "venue", v.Name, "error", err)
 			continue
@@ -173,7 +193,11 @@ func (s *Service) programme(
 				byTitle[k] = e
 				order = append(order, k)
 			}
-			// Prefer whichever venue published the metadata.
+			// Prefer whichever venue published the metadata, and a title in
+			// normal case over Erakys' all caps.
+			if isUpper(e.film.Title) && !isUpper(f.Title) {
+				e.film.Title = f.Title
+			}
 			if e.film.Genre == "" {
 				e.film.Genre = f.Genre
 			}
@@ -362,6 +386,11 @@ var titleCleaner = transform.Chain(
 // normalizeTitle makes cinema titles ("LA PAT' PATROUILLE : LE FILM") and TMDB
 // titles ("La Pat’ Patrouille : le film") comparable: accents, case,
 // punctuation and spacing all differ between the two.
+// isUpper reports whether s has letters and none of them is lower case.
+func isUpper(s string) bool {
+	return strings.ToUpper(s) == s && strings.ToLower(s) != s
+}
+
 func normalizeTitle(s string) string {
 	s, _, err := transform.String(titleCleaner, s)
 	if err != nil {

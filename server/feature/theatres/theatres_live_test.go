@@ -40,7 +40,7 @@ func TestShowtimesLive(t *testing.T) {
 	}
 	if len(resp.Films) == 0 {
 		t.Fatal("no films at all — the parser or the endpoint has broken " +
-			"(a day with zero screenings across both venues is not plausible)")
+			"(a day with zero screenings across all venues is not plausible)")
 	}
 
 	matched := 0

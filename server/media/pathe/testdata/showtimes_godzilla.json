@@ -1,0 +1,148 @@
+[
+ {
+  "time": "2026-11-09 13:10:00",
+  "version": "vf",
+  "tags": [
+   "DEFAULT",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T13:30:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167522/booking",
+  "auditoriumName": "9",
+  "auditoriumCapacity": "141",
+  "endTime": "2026-11-09 15:45:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 13:15:00",
+  "version": "vf",
+  "tags": [
+   "4dx",
+   "DEFAULT",
+   "GPXP",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T13:35:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167525/booking",
+  "auditoriumName": "4DX et SCREEN X",
+  "auditoriumCapacity": "108",
+  "endTime": "2026-11-09 15:50:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 16:00:00",
+  "version": "vf",
+  "tags": [
+   "DEFAULT",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T16:20:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167535/booking",
+  "auditoriumName": "4",
+  "auditoriumCapacity": "141",
+  "endTime": "2026-11-09 18:35:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 16:25:00",
+  "version": "vost",
+  "tags": [
+   "DEFAULT",
+   "GPXP",
+   "dolby",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T16:45:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167565/booking",
+  "auditoriumName": "DOLBY CINEMA",
+  "auditoriumCapacity": "221",
+  "endTime": "2026-11-09 19:00:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 18:30:00",
+  "version": "vf",
+  "tags": [
+   "4dx",
+   "DEFAULT",
+   "GPXP",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T18:50:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167548/booking",
+  "auditoriumName": "4DX et SCREEN X",
+  "auditoriumCapacity": "108",
+  "endTime": "2026-11-09 21:05:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 19:05:00",
+  "version": "vost",
+  "tags": [
+   "DEFAULT",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T19:25:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167550/booking",
+  "auditoriumName": "4",
+  "auditoriumCapacity": "141",
+  "endTime": "2026-11-09 21:40:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 20:25:00",
+  "version": "vost",
+  "tags": [
+   "DEFAULT",
+   "PREMIUM",
+   "peugeot",
+   "pmr",
+   "premium",
+   "vipvelvet_peugeot"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T20:45:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167557/booking",
+  "auditoriumName": "VELVET",
+  "auditoriumCapacity": "38",
+  "endTime": "2026-11-09 23:00:00",
+  "specialShowtimeDetails": null
+ },
+ {
+  "time": "2026-11-09 22:05:00",
+  "version": "vf",
+  "tags": [
+   "DEFAULT",
+   "pmr"
+  ],
+  "status": "available",
+  "reservabilityStart": "2026-07-15T18:52:03+02:00",
+  "reservabilityEnd": "2026-11-09T22:25:00+01:00",
+  "isMovie": true,
+  "refCmd": "https://s.pathe.fr/fr/V3392S167562/booking",
+  "auditoriumName": "4",
+  "auditoriumCapacity": "141",
+  "endTime": "2026-11-10 00:40:00",
+  "specialShowtimeDetails": null
+ }
+]

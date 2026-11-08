@@ -1,0 +1,97 @@
+{
+ "slug": "kraken-50712",
+ "title": "Kraken",
+ "titleTracking": "Kraken",
+ "releaseAt": {
+  "FR_FR": "2026-09-30"
+ },
+ "contentRating": {
+  "ref": "5d6673b36818ccef241b3d3ae69bf9c40f30c17aecbdea2c524c2867eae0f858",
+  "description": "-16",
+  "extendedDescription": null
+ },
+ "cinechecks": [],
+ "genres": [
+  "Epouvante-horreur"
+ ],
+ "genresSlug": [
+  "epouvante-horreur"
+ ],
+ "genresTracking": [
+  "Epouvante-horreur"
+ ],
+ "duration": 95,
+ "directors": "Théo Jourdain Rhodes, Mohamed Chabane",
+ "actors": "Alassane Diong, Manon Bresch, Guillaume Gouix",
+ "synopsis": "Dans une cité, une tour abandonnée alimente les rumeurs. Alors que des disparitions étranges s’enchaînent, 5 jeunes n’ont plus le choix : y entrer à nouveau. Pris dans un piège mortel, ils vont bientôt comprendre que s’échapper leur sera impossible…",
+ "entertainementLogo": null,
+ "entertainementSubtitle": null,
+ "distribution": null,
+ "entertainementCasting": null,
+ "posterPath": {
+  "lg": "https://media.pathe.fr/movie/alex/HO00010588/poster/lg/3/movie&uuid=C023E202-C835-446E-BD2D-EFA9570794C3",
+  "md": "https://media.pathe.fr/movie/alex/HO00010588/poster/md/3/movie&uuid=C023E202-C835-446E-BD2D-EFA9570794C3"
+ },
+ "backgroundPath": {
+  "lg": "https://media.pathe.fr/movie/mx/50712/lg/3/media",
+  "md": "https://media.pathe.fr/movie/mx/50712/md/3/media",
+  "sm": "https://media.pathe.fr/movie/mx/50712/sm/3/media"
+ },
+ "backgroundDominantColor": "#0a0e12",
+ "isMovie": true,
+ "trailers": [
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00010588/5e049e62-9530-422b-9ee5-ebbb8d465d36.mp4",
+   "videoType": "S3",
+   "title": "FR - Kraken (2)",
+   "snapshot": "https://media.pathe.fr/movie/mx/50712/md/3/media",
+   "isMain": true,
+   "language": "fr"
+  },
+  {
+   "externalId": "https://media.pathe.fr/trailer/video/fr/v/HO00010588/bbe69e3b-872f-4bf0-b365-58a2ea470f1a.mp4",
+   "videoType": "S3",
+   "title": "FR - Kraken",
+   "snapshot": "https://media.pathe.fr/movie/mx/50712/md/3/media",
+   "isMain": false,
+   "language": "fr"
+  }
+ ],
+ "presentation": null,
+ "calendar": null,
+ "warning": null,
+ "nationality": "France",
+ "nationalityTracking": "France",
+ "originalTitle": "Kraken",
+ "feelings": {
+  "countWishList": 4478,
+  "countEmotionDisappointed": 707,
+  "countEmotionLike": 2515,
+  "countEmotionLove": 1867
+ },
+ "event": [],
+ "redirectSlug": null,
+ "refHubble": "50712",
+ "isNew": false,
+ "notComingSoon": false,
+ "visaHubble": null,
+ "copiesCount": 177,
+ "next24ShowtimesCount": 17,
+ "tags": [
+  "confort_peugeot",
+  "peugeot",
+  "pmr"
+ ],
+ "salesOpeningDatetime": null,
+ "showtimesDisplayDatetime": null,
+ "vodAvailability": false,
+ "vod": null,
+ "refVista": "HO00010588",
+ "labelFlagColor": null,
+ "labelCategory": null,
+ "label": null,
+ "originalReleaseAt": null,
+ "extraInformation": null,
+ "logoTitle": null,
+ "type": null
+}

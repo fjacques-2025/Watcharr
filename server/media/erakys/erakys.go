@@ -26,14 +26,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-// Venue is one cinema served by an Erakys site.
-type Venue struct {
-	// Display name.
-	Name string
-	// Site host, without scheme, e.g. "lesvarietes-marseille.com".
-	Host string
-}
-
 // Showtime is a single screening.
 type Showtime struct {
 	// Start time, "20:15" (local to the cinema).
